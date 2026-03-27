@@ -1,0 +1,118 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: clients
+    // Fields:
+    //   - name: string (required)
+    //   - phone: string (required, unique)
+    //   - cashbackBalance: number (default 0)
+    //   - createdAt: timestamp
+    //
+    // Collection: categories
+    // Fields:
+    //   - name: string (required)
+    //   - active: boolean
+    //
+    // Collection: products
+    // Fields:
+    //   - categoryId: string (required)
+    //   - name: string (required)
+    //   - description: string
+    //   - active: boolean
+    //   - createdAt: timestamp
+    //
+    // Collection: variations
+    // Fields:
+    //   - productId: string (required)
+    //   - variationName: string (required)
+    //   - sku: string
+    //   - costPrice: number
+    //   - salePrice: number (required)
+    //   - stock: int (required)
+    //   - imageUrl: string
+    //   - active: boolean
+    //
+    // Collection: promotions
+    // Fields:
+    //   - name: string (required)
+    //   - discountType: string (PERCENTUAL, VALOR_FIXO)
+    //   - discountValue: number (required)
+    //   - startDate: timestamp
+    //   - endDate: timestamp
+    //   - dayOfWeek: int
+    //   - active: boolean
+    //   - productIds: list of strings
+    //
+    // Collection: orders
+    // Fields:
+    //   - clientId: string
+    //   - cep: string
+    //   - logradouro: string
+    //   - number: string
+    //   - neighborhood: string
+    //   - city: string
+    //   - uf: string
+    //   - total: number
+    //   - status: string
+    //   - createdAt: timestamp
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "thoomaswill@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    // Rules
+    match /clients/{clientId} {
+      allow read: if isOwner(clientId) || isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.keys().hasAll(['name', 'phone']);
+      allow update: if (isOwner(clientId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone'])) || isAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /variations/{variationId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /promotions/{promotionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (resource.data.clientId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isAdmin();
+    }
+  }
+}

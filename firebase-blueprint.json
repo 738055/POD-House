@@ -1,0 +1,114 @@
+{
+  "entities": {
+    "Client": {
+      "title": "Client",
+      "description": "User of the delivery system",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "cashbackBalance": { "type": "number", "description": "Current cashback balance" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "phone"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Product category",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["name"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Base product",
+      "type": "object",
+      "properties": {
+        "categoryId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "categoryId"]
+    },
+    "ProductVariation": {
+      "title": "ProductVariation",
+      "description": "Flavor or sub-product variation",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "variationName": { "type": "string" },
+        "sku": { "type": "string" },
+        "costPrice": { "type": "number" },
+        "salePrice": { "type": "number" },
+        "stock": { "type": "integer" },
+        "imageUrl": { "type": "string" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["productId", "variationName", "salePrice", "stock"]
+    },
+    "Promotion": {
+      "title": "Promotion",
+      "description": "Scheduled promotion",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "discountType": { "type": "string", "enum": ["PERCENTUAL", "VALOR_FIXO"] },
+        "discountValue": { "type": "number" },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "dayOfWeek": { "type": "integer", "description": "0=Sunday, 1=Monday... 4=Thursday" },
+        "active": { "type": "boolean" },
+        "productIds": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["name", "discountType", "discountValue"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Delivery order",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string" },
+        "cep": { "type": "string" },
+        "logradouro": { "type": "string" },
+        "number": { "type": "string" },
+        "complement": { "type": "string" },
+        "neighborhood": { "type": "string" },
+        "city": { "type": "string" },
+        "uf": { "type": "string" },
+        "subtotal": { "type": "number" },
+        "discountValue": { "type": "number" },
+        "cashbackUsed": { "type": "number" },
+        "total": { "type": "number" },
+        "cashbackGenerated": { "type": "number" },
+        "status": { "type": "string", "enum": ["PENDENTE", "CONFIRMADO", "ENVIADO", "CANCELADO"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "variationId": { "type": "string" },
+              "quantity": { "type": "integer" },
+              "unitPrice": { "type": "number" },
+              "subtotal": { "type": "number" }
+            }
+          }
+        }
+      },
+      "required": ["cep", "logradouro", "number", "neighborhood", "city", "uf", "total"]
+    }
+  },
+  "firestore": {
+    "clients": { "schema": "Client", "description": "Collection of clients" },
+    "categories": { "schema": "Category", "description": "Collection of categories" },
+    "products": { "schema": "Product", "description": "Collection of products" },
+    "variations": { "schema": "ProductVariation", "description": "Collection of product variations" },
+    "promotions": { "schema": "Promotion", "description": "Collection of promotions" },
+    "orders": { "schema": "Order", "description": "Collection of orders" }
+  }
+}

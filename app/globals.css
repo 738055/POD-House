@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #FFD700; /* Gold */
+  --color-secondary: #00FF00; /* Neon Green */
+  --color-background: #000000;
+  --color-surface: #121212;
+  --color-surface-hover: #1A1A1A;
+  --color-border: #222222;
+  
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Anton', sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-white font-sans antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-black font-black py-3 px-6 rounded-2xl transition-all active:scale-95 hover:shadow-[0_0_20px_rgba(255,215,0,0.3)];
+  }
+  
+  .btn-secondary {
+    @apply bg-surface text-white font-bold py-3 px-6 rounded-2xl border border-border transition-all hover:bg-surface-hover;
+  }
+  
+  .card-premium {
+    @apply bg-surface border border-border rounded-[32px] overflow-hidden transition-all hover:border-primary/30;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary;
+  }
+}
+
+/* Custom animations */
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out forwards;
+}
