@@ -1,5 +1,5 @@
 import type {Metadata} from 'next';
-import './globals.css'; // Global styles
+import './globals.css';
 import { Inter, Anton } from 'next/font/google';
 import { AuthProvider } from '@/hooks/use-auth';
 
@@ -15,14 +15,14 @@ const anton = Anton({
 });
 
 export const metadata: Metadata = {
-  title: 'House Delivery - Pod House',
-  description: 'Sistema de delivery para Pods e acessórios com variações, estoque, promoções e cashback.',
+  title: 'POD House - Delivery',
+  description: 'POD House - Os melhores pods e acessórios com entrega rápida em Londrina - PR.',
 };
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
     <html lang="pt-BR" className={`${inter.variable} ${anton.variable}`}>
-      <body suppressHydrationWarning className="antialiased">
+      <body suppressHydrationWarning className="antialiased bg-white">
         <AuthProvider>
           {children}
         </AuthProvider>

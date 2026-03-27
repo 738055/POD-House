@@ -1,12 +1,17 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #FFD700; /* Gold */
-  --color-secondary: #00FF00; /* Neon Green */
-  --color-background: #000000;
-  --color-surface: #121212;
-  --color-surface-hover: #1A1A1A;
-  --color-border: #222222;
+  --color-primary: #8B5CF6;
+  --color-primary-dark: #6D28D9;
+  --color-secondary: #F59E0B;
+  --color-accent: #EF4444;
+  --color-success: #10B981;
+  --color-background: #FFFFFF;
+  --color-surface: #F9FAFB;
+  --color-surface-hover: #F3F4F6;
+  --color-border: #E5E7EB;
+  --color-text: #111827;
+  --color-text-muted: #6B7280;
   
   --font-sans: 'Inter', sans-serif;
   --font-display: 'Anton', sans-serif;
@@ -14,33 +19,38 @@
 
 @layer base {
   body {
-    @apply bg-background text-white font-sans antialiased;
+    @apply bg-background text-text font-sans antialiased;
+    max-width: 480px;
+    margin: 0 auto;
+    position: relative;
+    min-height: 100vh;
+    background-color: #ffffff;
+  }
+  
+  * {
+    box-sizing: border-box;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-primary text-black font-black py-3 px-6 rounded-2xl transition-all active:scale-95 hover:shadow-[0_0_20px_rgba(255,215,0,0.3)];
+    @apply bg-primary text-white font-bold py-3 px-6 rounded-lg transition-all active:scale-95;
   }
   
   .btn-secondary {
-    @apply bg-surface text-white font-bold py-3 px-6 rounded-2xl border border-border transition-all hover:bg-surface-hover;
+    @apply bg-surface text-text font-semibold py-2 px-4 rounded-lg border border-border transition-all hover:bg-surface-hover;
   }
   
-  .card-premium {
-    @apply bg-surface border border-border rounded-[32px] overflow-hidden transition-all hover:border-primary/30;
+  .card {
+    @apply bg-white border border-border rounded-xl overflow-hidden;
   }
-
+  
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
-  }
-  
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary;
   }
 }
 
@@ -50,6 +60,20 @@
   to { transform: translateY(0); opacity: 1; }
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .animate-slide-up {
-  animation: slideUp 0.3s ease-out forwards;
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Bottom nav safe area */
+.pb-nav {
+  padding-bottom: 80px;
 }
