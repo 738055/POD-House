@@ -1,141 +1,100 @@
 'use client';
 
+import { useAuth } from '@/hooks/use-auth';
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '@/lib/firebase';
-import { Plus, Trash2, Edit2, Save, X } from 'lucide-react';
+import { Plus, Pencil, Loader2, AlertCircle, Tag } from 'lucide-react';
+import Link from 'next/link';
 
-export default function CategoriesPage() {
-  const [categories, setCategories] = useState<any[]>([]);
-  const [newCategory, setNewCategory] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState('');
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+  active: boolean;
+  image_url: string | null;
+};
+
+export default function AdminCategoriesPage() {
+  const { supabase } = useAuth();
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db, 'categories'), orderBy('name'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'categories'));
+    async function fetchCategories() {
+      if (!supabase) return;
+      setLoading(true);
+      setError(null);
 
-    return () => unsubscribe();
-  }, []);
+      const { data, error } = await supabase
+        .from('categories')
+        .select('id, name, slug, active, image_url')
+        .order('sort_order', { ascending: true });
 
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCategory.trim()) return;
-
-    try {
-      await addDoc(collection(db, 'categories'), {
-        name: newCategory,
-        active: true
-      });
-      setNewCategory('');
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'categories');
+      if (error) {
+        console.error('Erro ao buscar categorias:', error);
+        setError('Não foi possível carregar as categorias.');
+      } else {
+        setCategories(data as Category[]);
+      }
+      setLoading(false);
     }
-  };
 
-  const handleUpdate = async (id: string) => {
-    if (!editingName.trim()) return;
-    try {
-      await updateDoc(doc(db, 'categories', id), { name: editingName });
-      setEditingId(null);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `categories/${id}`);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta categoria?')) return;
-    try {
-      await deleteDoc(doc(db, 'categories', id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `categories/${id}`);
-    }
-  };
+    fetchCategories();
+  }, [supabase]);
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-4xl uppercase tracking-tighter text-white">Categorias</h2>
+    <div>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Categorias</h1>
+          <p className="text-gray-400">Gerencie as categorias de produtos da sua loja.</p>
+        </div>
+        <Link href="/admin/categories/new" className="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 hover:bg-purple-700 transition-colors">
+          <Plus size={18} />
+          Nova Categoria
+        </Link>
       </div>
 
-      <form onSubmit={handleAdd} className="bg-surface p-6 rounded-[32px] border border-border flex gap-4">
-        <input 
-          type="text" 
-          value={newCategory}
-          onChange={(e) => setNewCategory(e.target.value)}
-          placeholder="Nome da nova categoria..."
-          className="flex-grow p-4 rounded-2xl bg-background border border-border outline-none focus:border-primary transition-all text-sm placeholder:text-gray-600"
-        />
-        <button type="submit" className="btn-primary flex items-center gap-2">
-          <Plus size={20} />
-          Adicionar
-        </button>
-      </form>
+      {loading && <div className="flex justify-center p-12"><Loader2 className="animate-spin text-gray-400" size={32} /></div>}
+      {error && <div className="bg-red-500/10 text-red-400 p-4 rounded-lg flex items-center gap-2"><AlertCircle size={18} /> {error}</div>}
 
-      <div className="bg-surface rounded-[32px] border border-border overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-surface-hover border-b border-border">
-            <tr>
-              <th className="p-6 text-[10px] font-black uppercase tracking-widest text-gray-500">Nome</th>
-              <th className="p-6 text-[10px] font-black uppercase tracking-widest text-gray-500">Status</th>
-              <th className="p-6 text-[10px] font-black uppercase tracking-widest text-gray-500 text-right">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {categories.map((cat) => (
-              <tr key={cat.id} className="hover:bg-surface-hover transition-colors group">
-                <td className="p-6">
-                  {editingId === cat.id ? (
-                    <input 
-                      type="text" 
-                      value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
-                      className="w-full p-3 rounded-xl bg-background border border-primary outline-none text-white"
-                      autoFocus
-                    />
-                  ) : (
-                    <span className="font-bold text-white group-hover:text-primary transition-colors">{cat.name}</span>
-                  )}
-                </td>
-                <td className="p-6">
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${cat.active ? 'bg-secondary/10 text-secondary' : 'bg-red-500/10 text-red-500'}`}>
-                    {cat.active ? 'Ativo' : 'Inativo'}
-                  </span>
-                </td>
-                <td className="p-6 text-right space-x-2">
-                  {editingId === cat.id ? (
-                    <>
-                      <button onClick={() => handleUpdate(cat.id)} className="p-2 text-secondary hover:bg-secondary/10 rounded-xl transition-colors">
-                        <Save size={18} />
-                      </button>
-                      <button onClick={() => setEditingId(null)} className="p-2 text-gray-500 hover:bg-surface rounded-xl transition-colors">
-                        <X size={18} />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button 
-                        onClick={() => {
-                          setEditingId(cat.id);
-                          setEditingName(cat.name);
-                        }} 
-                        className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-xl transition-colors"
-                      >
-                        <Edit2 size={18} />
-                      </button>
-                      <button onClick={() => handleDelete(cat.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
-                        <Trash2 size={18} />
-                      </button>
-                    </>
-                  )}
-                </td>
+      {!loading && !error && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+          <table className="w-full text-sm text-left text-gray-300">
+            <thead className="text-xs text-gray-400 uppercase bg-gray-800">
+              <tr>
+                <th scope="col" className="px-6 py-3">Nome</th>
+                <th scope="col" className="px-6 py-3">Slug</th>
+                <th scope="col" className="px-6 py-3">Status</th>
+                <th scope="col" className="px-6 py-3"><span className="sr-only">Ações</span></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {categories.map((category) => (
+                <tr key={category.id} className="border-b border-gray-800 hover:bg-gray-800/50">
+                  <th scope="row" className="px-6 py-4 font-medium text-white whitespace-nowrap flex items-center gap-3">
+                    <div className="p-2 bg-gray-800 rounded-md">
+                        <Tag size={20} className="text-gray-400" />
+                    </div>
+                    {category.name}
+                  </th>
+                  <td className="px-6 py-4 font-mono text-gray-500">{category.slug}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${category.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                      {category.active ? 'Ativa' : 'Inativa'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <Link href={`/admin/categories/${category.id}`} className="p-2 rounded-md hover:bg-gray-700 text-blue-400 hover:text-blue-300">
+                        <Pencil size={16} />
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

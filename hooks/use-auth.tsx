@@ -1,93 +1,94 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import type { User } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/client';
-import type { Profile } from '@/lib/supabase/types';
+import { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import { createClient } from '@/lib/supabase';
+import type { User, Session, SupabaseClient } from '@supabase/supabase-js';
 
-interface AuthContextType {
+// Tipagem para o perfil do usuário, baseado no seu schema SQL
+type Profile = {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+  role: 'client' | 'admin';
+  points_balance: number;
+};
+
+// Tipagem para o valor do contexto de autenticação
+type AuthContextType = {
+  supabase: SupabaseClient;
+  session: Session | null;
   user: User | null;
   profile: Profile | null;
-  loading: boolean;
   isAdmin: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  loading: boolean;
   signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
-}
+};
 
+// Cria o contexto com um valor inicial indefinido
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const supabase = createClient();
-  const [user, setUser]       = useState<User | null>(null);
+  const supabase = useMemo(() => createClient(), []);
+  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function loadProfile(userId: string) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    setProfile(data as Profile | null);
-  }
-
-  async function refreshProfile() {
-    if (user) await loadProfile(user.id);
-  }
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    // O listener onAuthStateChange cuidará de limpar o estado
+  };
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-      if (user) loadProfile(user.id);
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // Função para buscar a sessão e o perfil inicial
+    const getInitialSession = async () => {
+      setLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
       setUser(session?.user ?? null);
+
       if (session?.user) {
-        await loadProfile(session.user.id);
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        setProfile(userProfile as Profile | null);
       } else {
-        setProfile(null);
+        setProfile(null); // Limpa o perfil se não houver sessão
       }
       setLoading(false);
+    };
+
+    getInitialSession();
+
+    // Listener para mudanças no estado de autenticação (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      getInitialSession();
     });
 
+    // Limpa a inscrição quando o componente é desmontado
     return () => subscription.unsubscribe();
-  }, []);
+  }, [supabase]);
 
-  async function signUp(email: string, password: string, fullName: string) {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: fullName } },
-    });
-    return { error: error?.message ?? null };
-  }
+  const value = {
+    supabase,
+    session,
+    user,
+    profile,
+    isAdmin: profile?.role === 'admin',
+    loading,
+    signOut,
+  };
 
-  async function signIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
-  }
-
-  async function signOut() {
-    await supabase.auth.signOut();
-  }
-
-  const isAdmin =
-    profile?.role === 'admin' ||
-    user?.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-
-  return (
-    <AuthContext.Provider value={{ user, profile, loading, isAdmin, signUp, signIn, signOut, refreshProfile }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
-}
+// Hook customizado para facilitar o uso do contexto
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
+  }
+  return context;
+};

@@ -1,98 +1,96 @@
 'use client';
 
+import { useAuth } from '@/hooks/use-auth';
 import { useState, useEffect } from 'react';
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { ShoppingBag, Users, TrendingUp, Package } from 'lucide-react';
 
-export default function AdminDashboard() {
-  const [stats, setStats] = useState({
-    orders: 0,
-    clients: 0,
-    products: 0,
-    revenue: 0
-  });
+// Tipagem para os dados do dashboard
+type DashboardStats = {
+  orders_count: number;
+  clients_count: number;
+  total_revenue: number;
+  products_count: number;
+};
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      const ordersSnap = await getDocs(collection(db, 'orders'));
-      const clientsSnap = await getDocs(collection(db, 'users'));
-      const productsSnap = await getDocs(collection(db, 'products'));
-
-      const revenue = ordersSnap.docs.reduce((sum, doc) => sum + (doc.data().total || 0), 0);
-
-      setStats({
-        orders: ordersSnap.size,
-        clients: clientsSnap.size,
-        products: productsSnap.size,
-        revenue
-      });
-    };
-
-    fetchStats();
-  }, []);
-
+// Componente para um card de estatística
+function StatCard({ icon: Icon, title, value, isLoading }: { icon: React.ElementType, title: string, value: string | number, isLoading: boolean }) {
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-4xl uppercase tracking-tighter text-white">Dashboard</h2>
-        <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Visão geral da sua loja</p>
+    <div className="bg-gray-900 p-6 rounded-xl border border-gray-800 flex items-center gap-5">
+      <div className="bg-gray-800 p-3 rounded-lg">
+        <Icon className="text-gray-400" size={24} />
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <StatCard 
-          title="Pedidos" 
-          value={stats.orders} 
-          icon={<ShoppingBag size={24} />} 
-          color="text-blue-400 bg-blue-400/10" 
-        />
-        <StatCard 
-          title="Clientes" 
-          value={stats.clients} 
-          icon={<Users size={24} />} 
-          color="text-secondary bg-secondary/10" 
-        />
-        <StatCard 
-          title="Produtos" 
-          value={stats.products} 
-          icon={<Package size={24} />} 
-          color="text-purple-400 bg-purple-400/10" 
-        />
-        <StatCard 
-          title="Faturamento" 
-          value={`R$ ${stats.revenue.toFixed(2)}`} 
-          icon={<TrendingUp size={24} />} 
-          color="text-primary bg-primary/10" 
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-surface p-8 rounded-[32px] border border-border group hover:border-primary/30 transition-all">
-          <h3 className="font-bold text-xl text-white mb-6 group-hover:text-primary transition-colors">Últimos Pedidos</h3>
-          <div className="text-center py-12 border-2 border-dashed border-border rounded-[24px]">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-700">Nenhum pedido recente encontrado.</p>
-          </div>
-        </div>
-        <div className="bg-surface p-8 rounded-[32px] border border-border group hover:border-primary/30 transition-all">
-          <h3 className="font-bold text-xl text-white mb-6 group-hover:text-primary transition-colors">Produtos Mais Vendidos</h3>
-          <div className="text-center py-12 border-2 border-dashed border-border rounded-[24px]">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-700">Nenhum dado disponível.</p>
-          </div>
-        </div>
+      <div>
+        <p className="text-sm text-gray-400">{title}</p>
+        {isLoading ? (
+          <div className="h-7 w-24 bg-gray-700 rounded-md animate-pulse mt-1"></div>
+        ) : (
+          <p className="text-2xl font-bold text-white">{value}</p>
+        )}
       </div>
     </div>
   );
 }
 
-function StatCard({ title, value, icon, color }: { title: string, value: string | number, icon: React.ReactNode, color: string }) {
+export default function AdminDashboard() {
+  const { supabase } = useAuth();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchStats() {
+      if (!supabase) return;
+
+      setLoading(true);
+      setError(null);
+
+      // Chamada à função RPC do Supabase
+      const { data, error } = await supabase.rpc('get_dashboard_stats');
+
+      if (error) {
+        console.error('Erro ao buscar estatísticas:', error);
+        setError('Não foi possível carregar os dados do dashboard.');
+      } else if (data && data.length > 0) {
+        // A RPC retorna um array com um objeto, pegamos o primeiro.
+        setStats(data[0]);
+      }
+      setLoading(false);
+    }
+
+    fetchStats();
+  }, [supabase]);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
+  };
+
+  const statCards = [
+    { icon: ShoppingBag, title: 'Total de Pedidos', value: stats?.orders_count ?? 0 },
+    { icon: Users, title: 'Total de Clientes', value: stats?.clients_count ?? 0 },
+    { icon: TrendingUp, title: 'Faturamento Total', value: formatCurrency(stats?.total_revenue ?? 0) },
+    { icon: Package, title: 'Produtos Cadastrados', value: stats?.products_count ?? 0 },
+  ];
+
   return (
-    <div className="bg-surface p-6 rounded-[32px] border border-border flex items-center gap-5 group hover:border-primary/50 transition-all">
-      <div className={`${color} p-5 rounded-2xl transition-transform group-hover:scale-110 duration-300`}>
-        {icon}
-      </div>
-      <div>
-        <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">{title}</p>
-        <p className="text-2xl font-bold text-white group-hover:text-primary transition-colors">{value}</p>
+    <div>
+      <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+      <p className="text-gray-400 mb-8">Visão geral da sua loja.</p>
+
+      {error && <div className="bg-red-500/10 text-red-400 p-4 rounded-lg mb-6">{error}</div>}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {statCards.map((card) => (
+          <StatCard
+            key={card.title}
+            icon={card.icon}
+            title={card.title}
+            value={card.value}
+            isLoading={loading}
+          />
+        ))}
       </div>
     </div>
   );
