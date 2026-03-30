@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:podhousedelivery.com.br)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(npm uninstall:*)"
+    ]
+  }
+}

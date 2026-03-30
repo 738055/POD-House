@@ -1,9 +1,11 @@
-import type {Metadata} from 'next';
+import type { Metadata } from 'next';
 import './globals.css';
 import { Inter, Anton } from 'next/font/google';
 import { AuthProvider } from '@/hooks/use-auth';
+import { CartProvider } from '@/hooks/use-cart';
 
-const inter = Inter({
+const inter = Anton({
+  weight: '400',
   subsets: ['latin'],
   variable: '--font-sans',
 });
@@ -19,12 +21,14 @@ export const metadata: Metadata = {
   description: 'POD House - Os melhores pods e acessórios com entrega rápida em Londrina - PR.',
 };
 
-export default function RootLayout({children}: {children: React.ReactNode}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" className={`${inter.variable} ${anton.variable}`}>
-      <body suppressHydrationWarning className="antialiased bg-white">
+      <body suppressHydrationWarning className="antialiased">
         <AuthProvider>
-          {children}
+          <CartProvider>
+            {children}
+          </CartProvider>
         </AuthProvider>
       </body>
     </html>
