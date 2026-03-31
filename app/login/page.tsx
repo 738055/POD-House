@@ -33,8 +33,11 @@ export default function LoginPage() {
   useEffect(() => {
     // If the user is already logged in, redirect them
     if (profile) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const next = searchParams.get('next');
+      
       if (isAdmin) {
-        router.push('/admin');
+        router.push(next || '/admin');
       } else {
         router.push('/');
       }

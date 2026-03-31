@@ -11,11 +11,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  useEffect(() => {
-    if (!loading && (!user || !isAdmin)) router.push('/');
-  }, [user, isAdmin, loading, router]);
-
   if (loading) return <div className="h-screen flex items-center justify-center bg-gray-900 text-white font-bold text-2xl animate-pulse">POD HOUSE...</div>;
+  
+  // O middleware já protege esta rota, mas mantemos uma verificação de segurança
   if (!user || !isAdmin) return null;
 
   return (
