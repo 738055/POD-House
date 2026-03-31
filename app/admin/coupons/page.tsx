@@ -88,7 +88,7 @@ export default function CouponsPage() {
       {editId && (
         <div className="bg-gray-900 rounded-2xl p-6 mb-6 border border-gray-800">
           <h2 className="text-lg font-bold mb-4">{editId === 'new' ? 'Novo Cupom' : 'Editar Cupom'}</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="text-xs text-gray-400 uppercase tracking-wide mb-1 block">Código *</label>
               <input value={form.code} onChange={e => setForm(f=>({...f,code:e.target.value.toUpperCase()}))}
@@ -142,7 +142,7 @@ export default function CouponsPage() {
               <input type="date" value={form.valid_until} onChange={e => setForm(f=>({...f,valid_until:e.target.value}))}
                 className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-gray-500" />
             </div>
-            <div>
+            <div className="sm:col-span-2 lg:col-span-3">
               <label className="text-xs text-gray-400 uppercase tracking-wide mb-1 block">Descrição</label>
               <input value={form.description} onChange={e => setForm(f=>({...f,description:e.target.value}))}
                 className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-gray-500" />
@@ -168,52 +168,99 @@ export default function CouponsPage() {
       {loading ? (
         <div className="text-gray-400 py-12 text-center">Carregando...</div>
       ) : (
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="border-b border-gray-800">
-              <tr className="text-gray-400 text-xs uppercase tracking-wide">
-                <th className="text-left px-6 py-4">Código</th>
-                <th className="text-left px-4 py-4">Tipo</th>
-                <th className="text-left px-4 py-4">Desconto</th>
-                <th className="text-left px-4 py-4">Mínimo</th>
-                <th className="text-left px-4 py-4">Usos</th>
-                <th className="text-left px-4 py-4">Validade</th>
-                <th className="text-left px-4 py-4">Status</th>
-                <th className="px-4 py-4" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => (
-                <tr key={row.id} className={`border-b border-gray-800/50 ${i % 2 === 0 ? '' : 'bg-gray-800/20'}`}>
-                  <td className="px-6 py-4">
+        <>
+          {/* Tabela para Desktop */}
+          <div className="hidden md:block bg-gray-900 rounded-2xl border border-gray-800 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-gray-800">
+                <tr className="text-gray-400 text-xs uppercase tracking-wide">
+                  <th className="text-left px-6 py-4">Código</th>
+                  <th className="text-left px-4 py-4">Tipo</th>
+                  <th className="text-left px-4 py-4">Desconto</th>
+                  <th className="text-left px-4 py-4">Mínimo</th>
+                  <th className="text-left px-4 py-4">Usos</th>
+                  <th className="text-left px-4 py-4">Validade</th>
+                  <th className="text-left px-4 py-4">Status</th>
+                  <th className="px-4 py-4" />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, i) => (
+                  <tr key={row.id} className={`border-b border-gray-800/50 ${i % 2 === 0 ? '' : 'bg-gray-800/20'}`}>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-white bg-gray-800 px-2 py-0.5 rounded">{row.code}</span>
+                        <button onClick={() => navigator.clipboard.writeText(row.code)} className="text-gray-500 hover:text-white"><Copy size={12} /></button>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-gray-300">{typeLabel(row.type)}</td>
+                    <td className="px-4 py-4 text-white font-semibold">
+                      {row.type === 'free_delivery' ? 'Grátis' : row.type === 'percentage' ? `${row.value}%` : `R$ ${row.value.toFixed(2)}`}
+                    </td>
+                    <td className="px-4 py-4 text-gray-300">{row.min_order_value > 0 ? `R$ ${row.min_order_value.toFixed(2)}` : '—'}</td>
+                    <td className="px-4 py-4 text-gray-300">{row.current_uses}{row.max_uses_total ? `/${row.max_uses_total}` : ''}</td>
+                    <td className="px-4 py-4 text-gray-300 text-xs">{row.valid_until ? new Date(row.valid_until).toLocaleDateString('pt-BR') : '∞'}</td>
+                    <td className="px-4 py-4">
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${row.active ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
+                        {row.active ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-2 justify-end">
+                        <button onClick={() => startEdit(row)} className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg"><Pencil size={14} /></button>
+                        <button onClick={() => remove(row.id)} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg"><Trash2 size={14} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Cards para Mobile */}
+          <div className="md:hidden space-y-4">
+            {rows.map((row) => (
+              <div key={row.id} className="bg-gray-900 p-4 rounded-lg border border-gray-800">
+                <div className="flex items-start justify-between">
+                  <div>
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-bold text-white bg-gray-800 px-2 py-0.5 rounded">{row.code}</span>
                       <button onClick={() => navigator.clipboard.writeText(row.code)} className="text-gray-500 hover:text-white"><Copy size={12} /></button>
                     </div>
-                  </td>
-                  <td className="px-4 py-4 text-gray-300">{typeLabel(row.type)}</td>
-                  <td className="px-4 py-4 text-white font-semibold">
-                    {row.type === 'free_delivery' ? 'Grátis' : row.type === 'percentage' ? `${row.value}%` : `R$ ${row.value.toFixed(2)}`}
-                  </td>
-                  <td className="px-4 py-4 text-gray-300">{row.min_order_value > 0 ? `R$ ${row.min_order_value.toFixed(2)}` : '—'}</td>
-                  <td className="px-4 py-4 text-gray-300">{row.current_uses}{row.max_uses_total ? `/${row.max_uses_total}` : ''}</td>
-                  <td className="px-4 py-4 text-gray-300 text-xs">{row.valid_until ? new Date(row.valid_until).toLocaleDateString('pt-BR') : '∞'}</td>
-                  <td className="px-4 py-4">
+                    <p className="text-sm text-gray-400 mt-1">{row.description}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => startEdit(row)} className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg"><Pencil size={14} /></button>
+                    <button onClick={() => remove(row.id)} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg"><Trash2 size={14} /></button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-3 text-sm">
+                  <div>
+                    <p className="text-gray-400">Desconto:</p>
+                    <p className="font-semibold text-white">{row.type === 'free_delivery' ? 'Grátis' : row.type === 'percentage' ? `${row.value}%` : `R$ ${row.value.toFixed(2)}`}</p>
+                  </div>
+                   <div>
+                    <p className="text-gray-400">Pedido Mínimo:</p>
+                    <p className="text-white">{row.min_order_value > 0 ? `R$ ${row.min_order_value.toFixed(2)}` : '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Usos:</p>
+                    <p className="text-white">{row.current_uses}{row.max_uses_total ? `/${row.max_uses_total}` : ''}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Validade:</p>
+                    <p className="text-white text-xs">{row.valid_until ? new Date(row.valid_until).toLocaleDateString('pt-BR') : '∞'}</p>
+                  </div>
+                </div>
+                 <div className="mt-2">
                     <span className={`text-xs font-semibold px-2 py-1 rounded-full ${row.active ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
                       {row.active ? 'Ativo' : 'Inativo'}
                     </span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center gap-2 justify-end">
-                      <button onClick={() => startEdit(row)} className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg"><Pencil size={14} /></button>
-                      <button onClick={() => remove(row.id)} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg"><Trash2 size={14} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                 </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

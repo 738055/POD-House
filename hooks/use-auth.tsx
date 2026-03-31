@@ -1,10 +1,9 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useMemo } from 'react';
-import { createClient } from '@/lib/supabase';
+import { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import type { User, Session, SupabaseClient } from '@supabase/supabase-js';
 
-// Tipagem para o perfil do usuário, baseado no seu schema SQL
 type Profile = {
   id: string;
   full_name: string | null;
@@ -13,7 +12,6 @@ type Profile = {
   points_balance: number;
 };
 
-// Tipagem para o valor do contexto de autenticação
 type AuthContextType = {
   supabase: SupabaseClient;
   session: Session | null;
@@ -22,10 +20,9 @@ type AuthContextType = {
   isAdmin: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 };
 
-// Cria o contexto com um valor inicial indefinido
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -35,53 +32,74 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    // O listener onAuthStateChange cuidará de limpar o estado
-  };
+  const refreshSession = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        throw sessionError;
+      }
 
-  const refreshProfile = async () => {
-    if (!user) return;
-    const { data: userProfile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-    setProfile(userProfile as Profile | null);
-  };
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
 
-  useEffect(() => {
-    // Função para buscar a sessão e o perfil inicial
-    const getInitialSession = async () => {
-      setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        const { data: userProfile } = await supabase
+      if (currentSession?.user) {
+        const { data: userProfile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', session.user.id)
+          .eq('id', currentSession.user.id)
           .single();
-        setProfile(userProfile as Profile | null);
+        
+        if (profileError) {
+          // It's possible the profile doesn't exist yet, so don't throw an error
+          console.error('Error fetching profile:', profileError.message);
+          setProfile(null);
+        } else {
+          setProfile(userProfile as Profile | null);
+        }
       } else {
-        setProfile(null); // Limpa o perfil se não houver sessão
+        setProfile(null);
       }
+    } catch (e) {
+      console.error('Error refreshing session:', e);
+      // Clear session data on critical error
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+    } finally {
       setLoading(false);
-    };
-
-    getInitialSession();
-
-    // Listener para mudanças no estado de autenticação (login/logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      getInitialSession();
-    });
-
-    // Limpa a inscrição quando o componente é desmontado
-    return () => subscription.unsubscribe();
+    }
   }, [supabase]);
 
+  useEffect(() => {
+    // Initial fetch
+    refreshSession();
+
+    // Set up a listener for auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth event:', event);
+        // We only need to refresh the session details, which includes the profile
+        // The getSession call in refreshSession is the source of truth
+        await refreshSession();
+      }
+    );
+
+    // Clean up the listener on unmount
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, [supabase, refreshSession]);
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    // Clear local state immediately
+    setSession(null);
+    setUser(null);
+    setProfile(null);
+  };
+  
   const value = {
     supabase,
     session,
@@ -90,17 +108,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAdmin: profile?.role === 'admin',
     loading,
     signOut,
-    refreshProfile,
+    refreshSession, // Expose the refresh function
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-// Hook customizado para facilitar o uso do contexto
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };

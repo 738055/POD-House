@@ -62,8 +62,8 @@ export default function NeighborhoodsPage() {
       {editId && (
         <div className="bg-gray-900 rounded-2xl p-6 mb-6 border border-gray-800">
           <h2 className="text-lg font-bold mb-4">{editId === 'new' ? 'Novo Bairro' : 'Editar Bairro'}</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
               <label className="text-xs text-gray-400 uppercase tracking-wide mb-1 block">Nome do Bairro *</label>
               <input value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))}
                 className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-gray-500" />
@@ -105,41 +105,79 @@ export default function NeighborhoodsPage() {
       {loading ? (
         <div className="text-gray-400 py-12 text-center">Carregando...</div>
       ) : (
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="border-b border-gray-800">
-              <tr className="text-gray-400 text-xs uppercase tracking-wide">
-                <th className="text-left px-6 py-4">Bairro</th>
-                <th className="text-left px-4 py-4">Prefixo CEP</th>
-                <th className="text-left px-4 py-4">Taxa</th>
-                <th className="text-left px-4 py-4">Tempo</th>
-                <th className="text-left px-4 py-4">Status</th>
-                <th className="px-4 py-4" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => (
-                <tr key={row.id} className={`border-b border-gray-800/50 ${i % 2 === 0 ? '' : 'bg-gray-800/20'}`}>
-                  <td className="px-6 py-4 font-medium text-white">{row.name}</td>
-                  <td className="px-4 py-4 text-gray-400">{row.cep_prefix ?? '—'}</td>
-                  <td className="px-4 py-4 text-white font-semibold">{row.delivery_fee === 0 ? 'Grátis' : `R$ ${row.delivery_fee.toFixed(2)}`}</td>
-                  <td className="px-4 py-4 text-gray-300">{row.estimated_minutes} min</td>
-                  <td className="px-4 py-4">
+        <>
+          {/* Tabela para Desktop */}
+          <div className="hidden md:block bg-gray-900 rounded-2xl border border-gray-800 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-gray-800">
+                <tr className="text-gray-400 text-xs uppercase tracking-wide">
+                  <th className="text-left px-6 py-4">Bairro</th>
+                  <th className="text-left px-4 py-4">Prefixo CEP</th>
+                  <th className="text-left px-4 py-4">Taxa</th>
+                  <th className="text-left px-4 py-4">Tempo</th>
+                  <th className="text-left px-4 py-4">Status</th>
+                  <th className="px-4 py-4" />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, i) => (
+                  <tr key={row.id} className={`border-b border-gray-800/50 ${i % 2 === 0 ? '' : 'bg-gray-800/20'}`}>
+                    <td className="px-6 py-4 font-medium text-white">{row.name}</td>
+                    <td className="px-4 py-4 text-gray-400">{row.cep_prefix ?? '—'}</td>
+                    <td className="px-4 py-4 text-white font-semibold">{row.delivery_fee === 0 ? 'Grátis' : `R$ ${row.delivery_fee.toFixed(2)}`}</td>
+                    <td className="px-4 py-4 text-gray-300">{row.estimated_minutes} min</td>
+                    <td className="px-4 py-4">
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${row.active ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
+                        {row.active ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-2 justify-end">
+                        <button onClick={() => startEdit(row)} className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg"><Pencil size={14} /></button>
+                        <button onClick={() => remove(row.id)} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg"><Trash2 size={14} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Cards para Mobile */}
+          <div className="md:hidden space-y-4">
+            {rows.map((row) => (
+              <div key={row.id} className="bg-gray-900 p-4 rounded-lg border border-gray-800">
+                <div className="flex items-center justify-between">
+                  <p className="font-bold text-white">{row.name}</p>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => startEdit(row)} className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg"><Pencil size={14} /></button>
+                    <button onClick={() => remove(row.id)} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg"><Trash2 size={14} /></button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-3">
+                  <div className="text-sm">
+                    <p className="text-gray-400">Taxa:</p>
+                    <p className="font-semibold text-white">{row.delivery_fee === 0 ? 'Grátis' : `R$ ${row.delivery_fee.toFixed(2)}`}</p>
+                  </div>
+                  <div className="text-sm">
+                    <p className="text-gray-400">Tempo:</p>
+                    <p className="text-white">{row.estimated_minutes} min</p>
+                  </div>
+                  <div className="text-sm">
+                    <p className="text-gray-400">CEP:</p>
+                    <p className="text-white">{row.cep_prefix ?? '—'}</p>
+                  </div>
+                   <div className="text-sm">
+                    <p className="text-gray-400">Status:</p>
                     <span className={`text-xs font-semibold px-2 py-1 rounded-full ${row.active ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
                       {row.active ? 'Ativo' : 'Inativo'}
                     </span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center gap-2 justify-end">
-                      <button onClick={() => startEdit(row)} className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg"><Pencil size={14} /></button>
-                      <button onClick={() => remove(row.id)} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg"><Trash2 size={14} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

@@ -73,7 +73,7 @@ export default function OrdersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Pedidos</h1>
           <p className="text-gray-400 text-sm mt-1">
@@ -176,7 +176,7 @@ export default function OrdersPage() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-sm">
                     <div>
                       <p className="text-gray-400 text-xs mb-1">Cliente</p>
                       <p className="text-white">{order.customer_name}</p>

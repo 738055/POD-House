@@ -74,41 +74,68 @@ export default function AdminProductsPage() {
       {error && <div className="bg-red-500/10 text-red-400 p-4 rounded-lg flex items-center gap-2"><AlertCircle size={18} /> {error}</div>}
 
       {!loading && !error && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-          <table className="w-full text-sm text-left text-gray-300">
-            <thead className="text-xs text-gray-400 uppercase bg-gray-800">
-              <tr>
-                <th scope="col" className="px-6 py-3">Produto</th>
-                <th scope="col" className="px-6 py-3">Categoria</th>
-                <th scope="col" className="px-6 py-3">Preço Base</th>
-                <th scope="col" className="px-6 py-3">Status</th>
-                <th scope="col" className="px-6 py-3"><span className="sr-only">Ações</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((product) => (
-                <tr key={product.id} className="border-b border-gray-800 hover:bg-gray-800/50">
-                  <th scope="row" className="px-6 py-4 font-medium text-white whitespace-nowrap flex items-center gap-3">
-                    <Image src={product.product_variants[0]?.image_url || '/logo.png'} alt={product.name} width={40} height={40} className="rounded-md bg-gray-700 object-contain p-1" />
-                    {product.name}
-                  </th>
-                  <td className="px-6 py-4">{product.categories?.name || 'N/A'}</td>
-                  <td className="px-6 py-4">{formatCurrency(product.base_price)}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${product.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                      {product.active ? 'Ativo' : 'Inativo'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <Link href={`/admin/products/${product.id}`} className="p-2 rounded-md hover:bg-gray-700 text-blue-400 hover:text-blue-300">
-                      <Pencil size={16} />
-                    </Link>
-                  </td>
+        <>
+          {/* Tabela para Desktop */}
+          <div className="hidden md:block bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+            <table className="w-full text-sm text-left text-gray-300">
+              <thead className="text-xs text-gray-400 uppercase bg-gray-800">
+                <tr>
+                  <th scope="col" className="px-6 py-3">Produto</th>
+                  <th scope="col" className="px-6 py-3">Categoria</th>
+                  <th scope="col" className="px-6 py-3">Preço Base</th>
+                  <th scope="col" className="px-6 py-3">Status</th>
+                  <th scope="col" className="px-6 py-3"><span className="sr-only">Ações</span></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {products.map((product) => (
+                  <tr key={product.id} className="border-b border-gray-800 hover:bg-gray-800/50">
+                    <th scope="row" className="px-6 py-4 font-medium text-white whitespace-nowrap flex items-center gap-3">
+                      <Image src={product.product_variants[0]?.image_url || '/logo.png'} alt={product.name} width={40} height={40} className="rounded-md bg-gray-700 object-contain p-1" />
+                      {product.name}
+                    </th>
+                    <td className="px-6 py-4">{product.categories?.name || 'N/A'}</td>
+                    <td className="px-6 py-4">{formatCurrency(product.base_price)}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${product.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                        {product.active ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <Link href={`/admin/products/${product.id}`} className="p-2 rounded-md hover:bg-gray-700 text-blue-400 hover:text-blue-300">
+                        <Pencil size={16} />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Cards para Mobile */}
+          <div className="md:hidden space-y-4">
+            {products.map((product) => (
+              <div key={product.id} className="bg-gray-900 p-4 rounded-lg border border-gray-800 flex items-start justify-between">
+                <div className="flex items-center gap-4">
+                  <Image src={product.product_variants[0]?.image_url || '/logo.png'} alt={product.name} width={48} height={48} className="rounded-md bg-gray-700 object-contain p-1" />
+                  <div>
+                    <p className="font-bold text-white leading-tight">{product.name}</p>
+                    <p className="text-sm text-gray-400">{product.categories?.name || 'N/A'}</p>
+                    <p className="text-sm text-gray-300 font-medium mt-1">{formatCurrency(product.base_price)}</p>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${product.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    {product.active ? 'Ativo' : 'Inativo'}
+                  </span>
+                  <Link href={`/admin/products/${product.id}`} className="p-2 rounded-md hover:bg-gray-700 text-blue-400 hover:text-blue-300 mt-2">
+                    <Pencil size={16} />
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

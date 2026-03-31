@@ -59,41 +59,69 @@ export default function AdminCategoriesPage() {
       {error && <div className="bg-red-500/10 text-red-400 p-4 rounded-lg flex items-center gap-2"><AlertCircle size={18} /> {error}</div>}
 
       {!loading && !error && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-          <table className="w-full text-sm text-left text-gray-300">
-            <thead className="text-xs text-gray-400 uppercase bg-gray-800">
-              <tr>
-                <th scope="col" className="px-6 py-3">Nome</th>
-                <th scope="col" className="px-6 py-3">Slug</th>
-                <th scope="col" className="px-6 py-3">Status</th>
-                <th scope="col" className="px-6 py-3"><span className="sr-only">Ações</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {categories.map((category) => (
-                <tr key={category.id} className="border-b border-gray-800 hover:bg-gray-800/50">
-                  <th scope="row" className="px-6 py-4 font-medium text-white whitespace-nowrap flex items-center gap-3">
-                    <div className="p-2 bg-gray-800 rounded-md">
-                        <Tag size={20} className="text-gray-400" />
-                    </div>
-                    {category.name}
-                  </th>
-                  <td className="px-6 py-4 font-mono text-gray-500">{category.slug}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${category.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                      {category.active ? 'Ativa' : 'Inativa'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <Link href={`/admin/categories/${category.id}`} className="p-2 rounded-md hover:bg-gray-700 text-blue-400 hover:text-blue-300">
-                        <Pencil size={16} />
-                    </Link>
-                  </td>
+        <>
+          {/* Tabela para Desktop */}
+          <div className="hidden md:block bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+            <table className="w-full text-sm text-left text-gray-300">
+              <thead className="text-xs text-gray-400 uppercase bg-gray-800">
+                <tr>
+                  <th scope="col" className="px-6 py-3">Nome</th>
+                  <th scope="col" className="px-6 py-3">Slug</th>
+                  <th scope="col" className="px-6 py-3">Status</th>
+                  <th scope="col" className="px-6 py-3"><span className="sr-only">Ações</span></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {categories.map((category) => (
+                  <tr key={category.id} className="border-b border-gray-800 hover:bg-gray-800/50">
+                    <th scope="row" className="px-6 py-4 font-medium text-white whitespace-nowrap flex items-center gap-3">
+                      <div className="p-2 bg-gray-800 rounded-md">
+                          <Tag size={20} className="text-gray-400" />
+                      </div>
+                      {category.name}
+                    </th>
+                    <td className="px-6 py-4 font-mono text-gray-500">{category.slug}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${category.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                        {category.active ? 'Ativa' : 'Inativa'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <Link href={`/admin/categories/${category.id}`} className="p-2 rounded-md hover:bg-gray-700 text-blue-400 hover:text-blue-300">
+                          <Pencil size={16} />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Cards para Mobile */}
+          <div className="md:hidden space-y-4">
+            {categories.map((category) => (
+              <div key={category.id} className="bg-gray-900 p-4 rounded-lg border border-gray-800 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 bg-gray-800 rounded-md">
+                    <Tag size={20} className="text-gray-400" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-white">{category.name}</p>
+                    <p className="text-sm font-mono text-gray-500">{category.slug}</p>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${category.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    {category.active ? 'Ativa' : 'Inativa'}
+                  </span>
+                  <Link href={`/admin/categories/${category.id}`} className="p-2 rounded-md hover:bg-gray-700 text-blue-400 hover:text-blue-300 mt-2">
+                    <Pencil size={16} />
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

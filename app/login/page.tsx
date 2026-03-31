@@ -1,11 +1,11 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
 import { LogIn, Loader2, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -18,7 +18,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const { supabase, session, isAdmin, loading } = useAuth();
+  const { supabase, profile, isAdmin } = useAuth();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
@@ -30,13 +30,16 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
-  // Redireciona se o usuário já estiver logado, após o estado de auth ser carregado
   useEffect(() => {
-    console.log('Login page useEffect:', { loading, session, isAdmin });
-    if (!loading && session) {
-      router.replace(isAdmin ? '/admin' : '/');
+    // If the user is already logged in, redirect them
+    if (profile) {
+      if (isAdmin) {
+        router.push('/admin');
+      } else {
+        router.push('/');
+      }
     }
-  }, [session, isAdmin, loading, router]);
+  }, [profile, isAdmin, router]);
 
   async function onSubmit(data: LoginFormValues) {
     setError(null);
@@ -48,7 +51,8 @@ export default function LoginPage() {
     if (error) {
       setError('E-mail ou senha inválidos. Tente novamente.');
     }
-    // O redirecionamento será tratado pelo useEffect
+    // The useEffect above will handle the redirect on successful login
+    // when the `profile` state is updated by the AuthProvider.
   }
 
   return (
