@@ -33,38 +33,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refreshSession = useCallback(async (currentSession?: Session | null) => {
-    // If no session is provided, try to get it from Supabase
-    let activeSession = currentSession;
-    if (activeSession === undefined) {
-      const { data: { session: fetchedSession } } = await supabase.auth.getSession();
-      activeSession = fetchedSession;
-    }
-
-    setSession(activeSession);
-    setUser(activeSession?.user ?? null);
-
-    if (activeSession?.user) {
-      const { data: userProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', activeSession.user.id)
-        .single();
-      
-      if (profileError) {
-        console.error('Error fetching profile:', profileError.message);
-        setProfile(null);
-      } else {
-        setProfile(userProfile as Profile | null);
+    try {
+      let activeSession = currentSession;
+      if (activeSession === undefined) {
+        const { data: { session: fetchedSession }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        activeSession = fetchedSession;
       }
-    } else {
+
+      setSession(activeSession ?? null);
+      setUser(activeSession?.user ?? null);
+
+      if (activeSession?.user) {
+        const { data: userProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', activeSession.user.id)
+          .single();
+        
+        if (profileError) {
+          console.error('Error fetching profile:', profileError.message);
+          setProfile(null);
+        } else {
+          setProfile(userProfile as Profile | null);
+        }
+      } else {
+        setProfile(null);
+      }
+    } catch (error) {
+      console.error('Auth refresh error:', error);
+      setSession(null);
+      setUser(null);
       setProfile(null);
+    } finally {
+      // O 'finally' garante que o loading termine independente de sucesso ou erro!
+      setLoading(false); 
     }
-    
-    setLoading(false);
   }, [supabase]);
 
   useEffect(() => {
-    // Initial fetch
     const initAuth = async () => {
       const { data: { session: initialSession } } = await supabase.auth.getSession();
       await refreshSession(initialSession);
@@ -72,7 +79,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     initAuth();
 
-    // Set up a listener for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log('Auth event:', event);
@@ -88,7 +94,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // Clean up the listener on unmount
     return () => {
       authListener?.subscription.unsubscribe();
     };
@@ -96,7 +101,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    // Clear local state immediately
     setSession(null);
     setUser(null);
     setProfile(null);
@@ -110,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAdmin: profile?.role === 'admin',
     loading,
     signOut,
-    refreshSession, // Expose the refresh function
+    refreshSession,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -29,18 +29,25 @@ export default function AdminDashboard() {
     async function fetchStats() {
       if (!supabase) return;
 
-      setLoading(true);
-      setError(null);
+      try {
+        setLoading(true);
+        setError(null);
 
-      const { data, error } = await supabase.rpc('get_dashboard_stats');
+        const { data, error } = await supabase.rpc('get_dashboard_stats');
 
-      if (error) {
-        console.error('Erro ao buscar estatísticas:', error);
-        setError('Não foi possível carregar os dados do dashboard.');
-      } else if (data && data.length > 0) {
-        setStats(data[0]);
+        if (error) {
+          console.error('Erro ao buscar estatísticas:', error);
+          setError('Não foi possível carregar os dados do dashboard.');
+        } else if (data) {
+          // Ajustado para não quebrar caso a função RPC retorne um Objeto em vez de um Array
+          setStats(Array.isArray(data) ? data[0] : data);
+        }
+      } catch (err) {
+        console.error('Erro de requisição:', err);
+        setError('Ocorreu um erro inesperado ao carregar os dados.');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
 
     fetchStats();

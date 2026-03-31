@@ -11,9 +11,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  if (loading) return <div className="h-screen flex items-center justify-center bg-gray-900 text-white font-bold text-2xl animate-pulse">POD HOUSE...</div>;
+  // Redireciona o usuário para fora do painel admin caso ele não tenha permissão
+  useEffect(() => {
+    if (!loading) {
+      if (!user || !isAdmin) {
+        router.replace('/'); // Manda de volta para a Home ou '/login'
+      }
+    }
+  }, [user, isAdmin, loading, router]);
+
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-900 text-white font-bold text-2xl animate-pulse">
+        POD HOUSE...
+      </div>
+    );
+  }
   
-  // O middleware já protege esta rota, mas mantemos uma verificação de segurança
+  // Evita a renderização do layout enquanto o redirecionamento ocorre
   if (!user || !isAdmin) return null;
 
   return (
