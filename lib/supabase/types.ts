@@ -171,6 +171,36 @@ export interface CouponValidation {
   coupon_id?: string;
 }
 
+export interface WhatsappTemplate {
+  id: string;
+  name: string;
+  slug: string;
+  category: 'order_confirmation' | 'order_status' | 'promotion' | 'welcome' | 'custom';
+  message: string;
+  variables: string[];
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScheduledPromotion {
+  id: string;
+  title: string;
+  description: string | null;
+  promotion_id: string | null;
+  coupon_id: string | null;
+  scheduled_date: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  color: string;
+  active: boolean;
+  created_at: string;
+  // joins
+  promotions?: Promotion | null;
+  coupons?: Coupon | null;
+}
+
 // Placeholder para o tipo Database gerado pelo Supabase CLI
 // Substitua por `supabase gen types typescript` quando disponível
 export type Database = Record<string, unknown>;

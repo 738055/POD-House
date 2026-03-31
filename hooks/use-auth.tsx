@@ -22,6 +22,7 @@ type AuthContextType = {
   isAdmin: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 };
 
 // Cria o contexto com um valor inicial indefinido
@@ -37,6 +38,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     // O listener onAuthStateChange cuidará de limpar o estado
+  };
+
+  const refreshProfile = async () => {
+    if (!user) return;
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+    setProfile(userProfile as Profile | null);
   };
 
   useEffect(() => {
@@ -79,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAdmin: profile?.role === 'admin',
     loading,
     signOut,
+    refreshProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

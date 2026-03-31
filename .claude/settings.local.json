@@ -4,7 +4,8 @@
       "WebFetch(domain:podhousedelivery.com.br)",
       "Bash(npx tsc:*)",
       "Bash(npm install:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(npx next:*)"
     ]
   }
 }

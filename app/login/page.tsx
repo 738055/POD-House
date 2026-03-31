@@ -32,6 +32,7 @@ export default function LoginPage() {
 
   // Redireciona se o usuário já estiver logado, após o estado de auth ser carregado
   useEffect(() => {
+    console.log('Login page useEffect:', { loading, session, isAdmin });
     if (!loading && session) {
       router.replace(isAdmin ? '/admin' : '/');
     }
@@ -97,6 +98,12 @@ export default function LoginPage() {
             {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <LogIn size={20} />}
             <span>{isSubmitting ? 'Entrando...' : 'Entrar'}</span>
           </button>
+
+          <div className="text-right">
+            <Link href="/forgot-password" className="text-sm text-purple-600 hover:underline">
+              Esqueceu a senha?
+            </Link>
+          </div>
         </form>
         <p className="text-center text-sm text-gray-500 mt-6">
           Não tem uma conta?{' '}

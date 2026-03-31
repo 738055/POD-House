@@ -26,7 +26,9 @@ import {
 } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { useAuth } from '@/hooks/use-auth';
-import ProfileTab from '@/components/profile-tab'; // Importa o componente ProfileTab
+import ProfileTab from '@/components/profile-tab';
+import CheckoutFlow from '@/components/CheckoutFlow';
+import OrdersTab from '@/components/orders-tab';
 
 // Define types based on your Supabase schema
 type Promotion = {
@@ -301,7 +303,8 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
-  
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+
   // Data from Supabase
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -561,7 +564,8 @@ export default function HomePage() {
       )}
       
       {/* Modals */}
-      <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart.items} onUpdateQuantity={cart.updateQty} onRemove={cart.removeItem} onCheckout={() => setIsCartOpen(false)} />
+      <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart.items} onUpdateQuantity={cart.updateQty} onRemove={cart.removeItem} onCheckout={() => { setIsCartOpen(false); setIsCheckoutOpen(true); }} />
+      <CheckoutFlow isOpen={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} />
       <DeliveryModal isOpen={isDeliveryOpen} onClose={() => setIsDeliveryOpen(false)} />
       <StoreInfoModal isOpen={isStoreInfoOpen} onClose={() => setIsStoreInfoOpen(false)} />
       <PromoModal promo={selectedPromo} onClose={() => setSelectedPromo(null)} />
