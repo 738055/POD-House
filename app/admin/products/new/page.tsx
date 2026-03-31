@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Loader2, AlertCircle, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { ImageUpload } from '../components/ImageUpload';
+import { ImageUpload } from '../../components/ImageUpload';
 
 const variantSchema = z.object({
   name: z.string().min(1, 'O nome da variação é obrigatório.'),
