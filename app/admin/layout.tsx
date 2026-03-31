@@ -36,10 +36,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       )}
 
-      <div className="flex-grow flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 w-full">
         <MobileHeader setMobileOpen={setMobileOpen} />
-        <main className="flex-grow p-4 md:p-8 lg:p-12 bg-gray-950 text-white overflow-x-hidden">
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <main className="flex-1 p-4 md:p-8 lg:p-10 bg-gray-950 text-white overflow-y-auto overflow-x-hidden">
+          <div className="w-full max-w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
             {children}
           </div>
         </main>

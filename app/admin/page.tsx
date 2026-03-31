@@ -47,13 +47,20 @@ export default function AdminDashboard() {
   }, [supabase]);
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-      <p className="text-gray-400 mb-8">Visão geral da sua loja.</p>
+    <div className="w-full space-y-8">
+      <div className="space-y-2">
+        <h1 className="text-4xl font-black text-white tracking-tight">Dashboard</h1>
+        <p className="text-gray-400 font-medium">Visão geral do desempenho da sua loja.</p>
+      </div>
 
-      {error && <div className="bg-red-500/10 text-red-400 p-4 rounded-lg mb-6">{error}</div>}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl flex items-center gap-3">
+          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+          <span className="font-bold text-sm">{error}</span>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 w-full">
         {STAT_CARDS.map((card) => (
           <StatCard
             key={card.title}
