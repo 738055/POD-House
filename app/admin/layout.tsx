@@ -17,26 +17,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!user || !isAdmin) return null;
 
   return (
-    <div className="min-h-screen bg-gray-950 flex">
+    <div className="min-h-screen bg-gray-950 flex font-sans selection:bg-purple-500/30">
       {/* Desktop Sidebar */}
-      <aside className="w-64 bg-gray-900 border-r border-gray-800 flex-col hidden md:flex">
+      <aside className="w-72 bg-gray-900 border-r border-gray-800/50 flex-col hidden lg:flex sticky top-0 h-screen">
         <Sidebar setMobileOpen={setMobileOpen} signOut={signOut} />
       </aside>
 
       {/* Mobile Sidebar Overlay */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
-          <aside className="relative w-72 h-full bg-gray-900 flex flex-col">
+        <div className="fixed inset-0 z-[100] lg:hidden">
+          <div 
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300" 
+            onClick={() => setMobileOpen(false)} 
+          />
+          <aside className="relative w-[85%] max-w-[320px] h-full bg-gray-900 flex flex-col shadow-2xl animate-in slide-in-from-left duration-300">
             <Sidebar setMobileOpen={setMobileOpen} signOut={signOut} />
           </aside>
         </div>
       )}
 
-      <div className="flex-grow flex flex-col">
+      <div className="flex-grow flex flex-col min-w-0">
         <MobileHeader setMobileOpen={setMobileOpen} />
-        <main className="flex-grow overflow-y-auto p-6 md:p-10 bg-gray-950 text-white">
-          {children}
+        <main className="flex-grow p-4 md:p-8 lg:p-12 bg-gray-950 text-white overflow-x-hidden">
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {children}
+          </div>
         </main>
       </div>
     </div>
