@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import type { Order } from '@/lib/supabase/types';
-import { ChevronDown, RefreshCw, MessageCircle, CheckCircle, Star, Loader2, AlertCircle } from 'lucide-react';
+import { ChevronDown, RefreshCw, MessageCircle, CheckCircle, Star, Loader2, AlertCircle, Bell } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Pendente', confirmed: 'Confirmado', preparing: 'Preparando',
@@ -22,13 +22,15 @@ function fmt(v: number) { return v.toLocaleString('pt-BR', { style: 'currency', 
 
 export default function OrdersPage() {
   const supabase = createClient();
-  const [orders, setOrders]       = useState<any[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [filter, setFilter]       = useState('');
-  const [expanded, setExpanded]   = useState<string | null>(null);
+  const { toast } = useToast();
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('');
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [confirmResult, setConfirmResult] = useState<{ orderId: string; points: number } | null>(null);
-  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [newOrderAlert, setNewOrderAlert] = useState(false);
+  const audioRef = useRef<AudioContext | null>(null);
 
   async function load() {
     setLoading(true);
@@ -41,41 +43,73 @@ export default function OrdersPage() {
 
   useEffect(() => { load(); }, [filter]);
 
+  // Realtime: escuta novos pedidos
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-orders-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+        const newOrder = payload.new as any;
+        setOrders(prev => [{ ...newOrder, order_items: [] }, ...prev]);
+        setNewOrderAlert(true);
+        toast(`Novo pedido de ${newOrder.customer_name || 'cliente'}!`, 'warning');
+        // Beep via Web Audio API
+        try {
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.setValueAtTime(880, ctx.currentTime);
+          gain.gain.setValueAtTime(0.3, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.5);
+        } catch {}
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase]);
+
   async function updateStatus(id: string, status: string) {
     await supabase.from('orders').update({ status }).eq('id', id);
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
+    toast('Status atualizado.');
   }
 
-  // Confirmar pedido (gera pontos de fidelidade)
   async function confirmOrder(orderId: string) {
     setConfirmingId(orderId);
-    setConfirmError(null);
-    setConfirmResult(null);
-
     const { data, error } = await (supabase.rpc as any)('confirm_order', { p_order_id: orderId });
-
     if (error) {
-      setConfirmError(error.message);
+      toast(error.message, 'error');
       setConfirmingId(null);
       return;
     }
-
     const result = data as { success: boolean; order_id: string; points_earned: number; user_id: string | null };
     setConfirmResult({ orderId: result.order_id, points: result.points_earned });
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'confirmed' } : o));
     setConfirmingId(null);
-
-    // Auto-dismiss after 4s
+    toast(`Pedido confirmado! ${result.points_earned > 0 ? `${result.points_earned} pontos gerados.` : ''}`);
     setTimeout(() => setConfirmResult(null), 4000);
   }
 
   const pendingCount = orders.filter(o => o.status === 'pending').length;
 
   return (
-    <div>
+    <div className="max-w-7xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Pedidos</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-white">Pedidos</h1>
+            {newOrderAlert && (
+              <button
+                onClick={() => setNewOrderAlert(false)}
+                className="flex items-center gap-1.5 bg-yellow-500/20 text-yellow-400 text-xs font-bold px-3 py-1.5 rounded-full animate-pulse"
+              >
+                <Bell size={13} /> Novo pedido!
+              </button>
+            )}
+          </div>
           <p className="text-gray-400 text-sm mt-1">
             {orders.length} pedidos
             {pendingCount > 0 && (
@@ -97,36 +131,12 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Confirm success toast */}
-      {confirmResult && (
-        <div className="mb-4 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 flex items-center gap-3 animate-fade-in">
-          <CheckCircle size={20} className="text-green-400 flex-shrink-0" />
-          <div>
-            <p className="text-green-400 font-semibold text-sm">Pedido #{confirmResult.orderId.slice(0, 8)} confirmado!</p>
-            {confirmResult.points > 0 && (
-              <p className="text-green-400/70 text-xs flex items-center gap-1">
-                <Star size={12} /> {confirmResult.points} pontos de fidelidade gerados para o cliente
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {confirmError && (
-        <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 flex items-center gap-2">
-          <AlertCircle size={18} className="text-red-400" />
-          <p className="text-red-400 text-sm">{confirmError}</p>
-        </div>
-      )}
-
       {loading ? (
         <div className="text-gray-400 py-12 text-center">Carregando...</div>
       ) : (
         <div className="space-y-3">
           {orders.map(order => (
-            <div key={order.id} className={`bg-gray-900 rounded-2xl border overflow-hidden ${
-              order.status === 'pending' ? 'border-yellow-500/40' : 'border-gray-800'
-            }`}>
+            <div key={order.id} className={`bg-gray-900 rounded-2xl border overflow-hidden ${order.status === 'pending' ? 'border-yellow-500/40' : 'border-gray-800'}`}>
               <button
                 onClick={() => setExpanded(expanded === order.id ? null : order.id)}
                 className="w-full flex items-center gap-4 px-6 py-4 text-left hover:bg-gray-800/50">
@@ -150,7 +160,6 @@ export default function OrdersPage() {
 
               {expanded === order.id && (
                 <div className="px-6 pb-5 border-t border-gray-800 pt-4">
-                  {/* Confirm Button - Destacado para pedidos pendentes */}
                   {order.status === 'pending' && (
                     <div className="mb-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
                       <div className="flex items-start gap-3 mb-3">
@@ -167,11 +176,7 @@ export default function OrdersPage() {
                         disabled={confirmingId === order.id}
                         className="w-full bg-green-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-green-700 disabled:opacity-50"
                       >
-                        {confirmingId === order.id ? (
-                          <><Loader2 size={18} className="animate-spin" /> Confirmando...</>
-                        ) : (
-                          <><CheckCircle size={18} /> Confirmar Compra & Gerar Pontos</>
-                        )}
+                        {confirmingId === order.id ? <><Loader2 size={18} className="animate-spin" /> Confirmando...</> : <><CheckCircle size={18} /> Confirmar Compra & Gerar Pontos</>}
                       </button>
                     </div>
                   )}
@@ -198,7 +203,7 @@ export default function OrdersPage() {
                     ))}
                   </div>
 
-                  <div className="space-y-1 text-sm">
+                  <div className="space-y-1 text-sm mb-4">
                     <div className="flex justify-between text-gray-400"><span>Subtotal</span><span>{fmt(order.subtotal)}</span></div>
                     <div className="flex justify-between text-gray-400"><span>Entrega</span><span>{fmt(order.delivery_fee)}</span></div>
                     {order.coupon_discount > 0 && <div className="flex justify-between text-green-400"><span>Cupom ({order.coupon_code})</span><span>-{fmt(order.coupon_discount)}</span></div>}
@@ -206,39 +211,26 @@ export default function OrdersPage() {
                     <div className="flex justify-between font-bold text-white text-base pt-2 border-t border-gray-700"><span>Total</span><span>{fmt(order.total)}</span></div>
                   </div>
 
-                  {/* Actions row */}
-                  <div className="flex gap-3 mt-4">
-                    {/* WhatsApp */}
+                  <div className="flex gap-3">
                     {order.customer_phone && (
                       <button
                         onClick={() => {
                           const items = order.order_items?.map((i: any) => `${i.quantity}x ${i.product_name} (${i.variant_name})`).join('\n') || '';
-                          const msg = encodeURIComponent(
-                            `Olá ${order.customer_name || 'Cliente'}! 🎉\n\nSeu pedido #${order.id.slice(0, 8)} foi ${order.status === 'confirmed' ? 'confirmado' : 'recebido'}!\n\n📋 *Itens:*\n${items}\n\n💰 *Total:* ${fmt(order.total)}\n🏍️ *Entrega:* ${order.address_neighborhood}\n\nPOD House 💜`
-                          );
+                          const msg = encodeURIComponent(`Olá ${order.customer_name || 'Cliente'}! 🎉\n\nSeu pedido #${order.id.slice(0, 8)} foi ${order.status === 'confirmed' ? 'confirmado' : 'recebido'}!\n\n📋 *Itens:*\n${items}\n\n💰 *Total:* ${fmt(order.total)}\n🏍️ *Entrega:* ${order.address_neighborhood}\n\nPOD House 💜`);
                           const phone = order.customer_phone.replace(/\D/g, '');
                           window.open(`https://wa.me/55${phone}?text=${msg}`, '_blank');
                           supabase.from('orders').update({ whatsapp_sent: true }).eq('id', order.id);
                           setOrders(prev => prev.map(o => o.id === order.id ? { ...o, whatsapp_sent: true } : o));
                         }}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold ${
-                          order.whatsapp_sent
-                            ? 'bg-gray-800 text-gray-400'
-                            : 'bg-green-600 text-white hover:bg-green-700'
-                        }`}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold ${order.whatsapp_sent ? 'bg-gray-800 text-gray-400' : 'bg-green-600 text-white hover:bg-green-700'}`}
                       >
                         <MessageCircle size={16} />
                         {order.whatsapp_sent ? 'WhatsApp enviado' : 'Enviar via WhatsApp'}
                       </button>
                     )}
-
-                    {/* Status change for non-pending orders */}
                     {order.status !== 'pending' && (
-                      <select
-                        value={order.status}
-                        onChange={e => updateStatus(order.id, e.target.value)}
-                        className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none"
-                      >
+                      <select value={order.status} onChange={e => updateStatus(order.id, e.target.value)}
+                        className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none">
                         {Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                       </select>
                     )}

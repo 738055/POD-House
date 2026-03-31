@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { WhatsappTemplate } from '@/lib/supabase/types';
 import { Plus, Pencil, Trash2, Check, X, Loader2, Copy, Eye, Send, MessageCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 const CATEGORY_LABELS: Record<string, string> = {
   order_confirmation: 'Confirmação de Pedido',
@@ -28,6 +30,7 @@ const EMPTY = {
 
 export default function WhatsappPage() {
   const supabase = createClient();
+  const { toast } = useToast();
   const [rows, setRows] = useState<WhatsappTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [editId, setEditId] = useState<string | 'new' | null>(null);
@@ -35,6 +38,7 @@ export default function WhatsappPage() {
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState<WhatsappTemplate | null>(null);
   const [previewVars, setPreviewVars] = useState<Record<string, string>>({});
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   async function load() {
     const { data } = await supabase.from('whatsapp_templates').select('*').order('category').order('name');
@@ -68,17 +72,19 @@ export default function WhatsappPage() {
       variables: vars,
       active: form.active,
     };
-    if (editId === 'new') await supabase.from('whatsapp_templates').insert(payload);
-    else await supabase.from('whatsapp_templates').update(payload).eq('id', editId!);
-    setEditId(null);
-    await load();
+    const { error } = editId === 'new'
+      ? await supabase.from('whatsapp_templates').insert(payload)
+      : await supabase.from('whatsapp_templates').update(payload).eq('id', editId!);
+    if (error) toast('Erro ao salvar template.', 'error');
+    else { toast(editId === 'new' ? 'Template criado.' : 'Template atualizado.'); setEditId(null); await load(); }
     setSaving(false);
   }
 
   async function remove(id: string) {
-    if (!confirm('Excluir template?')) return;
-    await supabase.from('whatsapp_templates').delete().eq('id', id);
-    setRows(r => r.filter(x => x.id !== id));
+    const { error } = await supabase.from('whatsapp_templates').delete().eq('id', id);
+    if (error) toast('Erro ao excluir template.', 'error');
+    else { toast('Template excluído.'); setRows(r => r.filter(x => x.id !== id)); }
+    setConfirmId(null);
   }
 
   function openPreview(row: WhatsappTemplate) {
@@ -111,7 +117,7 @@ export default function WhatsappPage() {
   }
 
   return (
-    <div>
+    <div className="max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -128,7 +134,7 @@ export default function WhatsappPage() {
       {editId && (
         <div className="bg-gray-900 rounded-2xl p-6 mb-6 border border-gray-800">
           <h2 className="text-lg font-bold mb-4">{editId === 'new' ? 'Novo Template' : 'Editar Template'}</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-gray-400 uppercase tracking-wide mb-1 block">Nome *</label>
               <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -217,7 +223,7 @@ export default function WhatsappPage() {
                   <button onClick={() => startEdit(row)} className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg" title="Editar">
                     <Pencil size={14} />
                   </button>
-                  <button onClick={() => remove(row.id)} className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg" title="Excluir">
+                  <button onClick={() => setConfirmId(row.id)} className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg" title="Excluir">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -229,6 +235,15 @@ export default function WhatsappPage() {
           )}
         </div>
       )}
+
+      <ConfirmModal
+        open={!!confirmId}
+        title="Excluir template?"
+        description="Esta ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        onConfirm={() => remove(confirmId!)}
+        onCancel={() => setConfirmId(null)}
+      />
 
       {/* Preview Modal */}
       {preview && (

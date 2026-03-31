@@ -2,19 +2,20 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  Package, 
-  List, 
-  Users, 
-  ShoppingBag, 
-  Ticket, 
-  MapPin, 
-  MessageSquare, 
+import {
+  LayoutDashboard,
+  Package,
+  List,
+  Users,
+  ShoppingBag,
+  Ticket,
+  MapPin,
+  MessageSquare,
   LogOut,
   X,
   Tag,
-  ChevronRight
+  ChevronRight,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
@@ -34,6 +35,7 @@ const menuItems = [
   { name: 'Bairros', href: '/admin/neighborhoods', icon: MapPin },
   { name: 'Usuários', href: '/admin/users', icon: Users },
   { name: 'WhatsApp', href: '/admin/whatsapp', icon: MessageSquare },
+  { name: 'Configurações', href: '/admin/settings', icon: Settings },
 ];
 
 export function Sidebar({ setMobileOpen, signOut }: SidebarProps) {
@@ -51,7 +53,7 @@ export function Sidebar({ setMobileOpen, signOut }: SidebarProps) {
         </div>
         <button 
           onClick={() => setMobileOpen(false)}
-          className="md:hidden p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-xl transition-all"
+          className="lg:hidden p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-xl transition-all"
         >
           <X size={24} />
         </button>

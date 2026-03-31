@@ -9,7 +9,7 @@ interface MobileHeaderProps {
 
 export function MobileHeader({ setMobileOpen }: MobileHeaderProps) {
   return (
-    <header className="h-20 bg-gray-900/80 backdrop-blur-xl border-b border-gray-800/50 flex items-center justify-between px-6 md:hidden sticky top-0 z-40">
+    <header className="h-20 bg-gray-900/80 backdrop-blur-xl border-b border-gray-800/50 flex items-center justify-between px-6 lg:hidden sticky top-0 z-40">
       <div className="flex items-center gap-4">
         <button
           onClick={() => setMobileOpen(true)}

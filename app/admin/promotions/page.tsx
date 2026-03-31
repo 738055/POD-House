@@ -43,7 +43,7 @@ export default function AdminPromotionsPage() {
   }, [supabase]);
 
   return (
-    <div>
+    <div className="max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-white">Promoções</h1>
@@ -61,7 +61,7 @@ export default function AdminPromotionsPage() {
       {!loading && !error && (
         <>
           {/* Tabela para Desktop */}
-          <div className="hidden md:block bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+          <div className="hidden lg:block bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
             <table className="w-full text-sm text-left text-gray-300">
               <thead className="text-xs text-gray-400 uppercase bg-gray-800">
                 <tr>
@@ -95,7 +95,7 @@ export default function AdminPromotionsPage() {
           </div>
 
           {/* Cards para Mobile */}
-          <div className="md:hidden space-y-4">
+          <div className="lg:hidden space-y-4">
             {promotions.map((promo) => (
               <div key={promo.id} className="bg-gray-900 p-4 rounded-lg border border-gray-800 flex items-center justify-between">
                 <div>

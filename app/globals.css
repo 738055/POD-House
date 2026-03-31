@@ -20,16 +20,21 @@
 @layer base {
   body {
     @apply font-sans antialiased;
-    max-width: 480px;
-    margin: 0 auto;
-    position: relative;
     min-height: 100vh;
-    background-color: #f4f5f7;
   }
 
   * {
     box-sizing: border-box;
   }
+}
+
+/* Constraint para páginas da loja (não se aplica ao admin) */
+.store-layout {
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+  min-height: 100vh;
+  background-color: #f4f5f7;
 }
 
 @layer components {
