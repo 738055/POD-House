@@ -32,57 +32,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshSession = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        throw sessionError;
-      }
-
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-
-      if (currentSession?.user) {
-        const { data: userProfile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', currentSession.user.id)
-          .single();
-        
-        if (profileError) {
-          // It's possible the profile doesn't exist yet, so don't throw an error
-          console.error('Error fetching profile:', profileError.message);
-          setProfile(null);
-        } else {
-          setProfile(userProfile as Profile | null);
-        }
-      } else {
-        setProfile(null);
-      }
-    } catch (e) {
-      console.error('Error refreshing session:', e);
-      // Clear session data on critical error
-      setSession(null);
-      setUser(null);
-      setProfile(null);
-    } finally {
-      setLoading(false);
+  const refreshSession = useCallback(async (currentSession?: Session | null) => {
+    // If no session is provided, try to get it from Supabase
+    let activeSession = currentSession;
+    if (activeSession === undefined) {
+      const { data: { session: fetchedSession } } = await supabase.auth.getSession();
+      activeSession = fetchedSession;
     }
+
+    setSession(activeSession);
+    setUser(activeSession?.user ?? null);
+
+    if (activeSession?.user) {
+      const { data: userProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', activeSession.user.id)
+        .single();
+      
+      if (profileError) {
+        console.error('Error fetching profile:', profileError.message);
+        setProfile(null);
+      } else {
+        setProfile(userProfile as Profile | null);
+      }
+    } else {
+      setProfile(null);
+    }
+    
+    setLoading(false);
   }, [supabase]);
 
   useEffect(() => {
     // Initial fetch
-    refreshSession();
+    const initAuth = async () => {
+      const { data: { session: initialSession } } = await supabase.auth.getSession();
+      await refreshSession(initialSession);
+    };
+    
+    initAuth();
 
     // Set up a listener for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event, newSession) => {
         console.log('Auth event:', event);
-        // We only need to refresh the session details, which includes the profile
-        // The getSession call in refreshSession is the source of truth
-        await refreshSession();
+        
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+          await refreshSession(newSession);
+        } else if (event === 'SIGNED_OUT') {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+        }
       }
     );
 
