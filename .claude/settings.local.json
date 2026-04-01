@@ -4,7 +4,9 @@
       "Bash(mv:*)",
       "Bash(ls:*)",
       "Bash(xargs grep:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(npx next:*)"
     ]
   }
 }
