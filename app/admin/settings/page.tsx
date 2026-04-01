@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { ImageUpload } from '../components/ImageUpload';
-import { Settings, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Settings, Loader2, CheckCircle, AlertCircle, MapPin, Search } from 'lucide-react';
 
 type StoreSettings = {
   store_name: string;
@@ -19,6 +19,9 @@ type StoreSettings = {
   is_open: boolean;
   default_delivery_fee: number | null;
   default_delivery_minutes: number;
+  store_address: string;
+  store_lat: number | null;
+  store_lng: number | null;
 };
 
 export default function SettingsPage() {
@@ -28,11 +31,14 @@ export default function SettingsPage() {
     whatsapp_number: '', phone_number: '', address_display: '',
     opening_hours: '', min_order_value: 0, delivery_info: '', is_open: true,
     default_delivery_fee: null, default_delivery_minutes: 60,
+    store_address: '', store_lat: null, store_lng: null,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
+  const [geocodeError, setGeocodeError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -51,6 +57,9 @@ export default function SettingsPage() {
         is_open: data.is_open ?? true,
         default_delivery_fee: data.default_delivery_fee ?? null,
         default_delivery_minutes: data.default_delivery_minutes ?? 60,
+        store_address: data.store_address || '',
+        store_lat: data.store_lat ?? null,
+        store_lng: data.store_lng ?? null,
       });
       setLoading(false);
     }
@@ -72,6 +81,30 @@ export default function SettingsPage() {
       setError(`Erro ao salvar: ${err.message}`);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function geocodeAddress() {
+    if (!settings.store_address.trim()) return;
+    setGeocoding(true);
+    setGeocodeError(null);
+    try {
+      const query = encodeURIComponent(settings.store_address.trim());
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${query}&countrycodes=br&format=json&limit=1`,
+        { headers: { 'Accept-Language': 'pt-BR' } }
+      );
+      const data = await res.json();
+      if (!data || data.length === 0) {
+        setGeocodeError('Endereço não encontrado. Tente incluir cidade e estado.');
+        return;
+      }
+      const { lat, lon } = data[0];
+      setSettings(s => ({ ...s, store_lat: parseFloat(lat), store_lng: parseFloat(lon) }));
+    } catch {
+      setGeocodeError('Erro ao buscar coordenadas. Verifique sua conexão.');
+    } finally {
+      setGeocoding(false);
     }
   }
 
@@ -254,6 +287,55 @@ export default function SettingsPage() {
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
+        </div>
+      </div>
+
+      {/* Localização da Loja */}
+      <div className="p-6 bg-gray-900 border border-gray-800 rounded-xl space-y-4">
+        <div className="flex items-center gap-2">
+          <MapPin className="text-purple-400" size={20} />
+          <h2 className="text-lg font-bold text-white">Localização da Loja</h2>
+        </div>
+        <p className="text-sm text-gray-500">
+          Endereço completo da loja. Usado como ponto de origem nas zonas de entrega.
+        </p>
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <input
+              value={settings.store_address}
+              onChange={e => {
+                setSettings(s => ({ ...s, store_address: e.target.value, store_lat: null, store_lng: null }));
+                setGeocodeError(null);
+              }}
+              placeholder="Rua das Flores, 123, Centro, Londrina - PR"
+              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+            <button
+              type="button"
+              onClick={geocodeAddress}
+              disabled={geocoding || !settings.store_address.trim()}
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap"
+            >
+              {geocoding ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />}
+              {geocoding ? 'Buscando...' : 'Geocodificar'}
+            </button>
+          </div>
+
+          {geocodeError && (
+            <p className="text-sm text-red-400 flex items-center gap-1.5">
+              <AlertCircle size={14} />
+              {geocodeError}
+            </p>
+          )}
+
+          {settings.store_lat !== null && settings.store_lng !== null && (
+            <div className="flex items-center gap-2 text-sm text-green-400 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
+              <CheckCircle size={14} />
+              <span>
+                Coordenadas: <strong>{settings.store_lat.toFixed(6)}</strong>, <strong>{settings.store_lng.toFixed(6)}</strong>
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
