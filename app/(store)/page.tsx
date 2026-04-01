@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import {
   MapPin,
@@ -31,6 +31,19 @@ import { createClient } from '@/lib/supabase/client';
 import ProfileTab from '@/components/profile-tab';
 import CheckoutFlow from '@/components/CheckoutFlow';
 import OrdersTab from '@/components/orders-tab';
+
+type StoreSettings = {
+  store_name: string;
+  logo_url: string | null;
+  cover_url: string | null;
+  whatsapp_number: string | null;
+  phone_number: string | null;
+  address_display: string | null;
+  opening_hours: string | null;
+  min_order_value: number;
+  delivery_info: string | null;
+  is_open: boolean;
+};
 
 type Promotion = {
   id: string;
@@ -87,9 +100,9 @@ function VariantPickerSheet({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end" style={{ maxWidth: '480px', left: 0, right: 0, margin: '0 auto' }}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full bg-white rounded-t-2xl max-h-[75vh] flex flex-col animate-slide-up">
+      <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl max-h-[75vh] flex flex-col animate-slide-up">
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
           <div>
             <h2 className="text-base font-bold text-gray-900">{product.name}</h2>
@@ -208,9 +221,9 @@ function CartModal({
   const total = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end" style={{ maxWidth: '480px', left: 0, right: 0, margin: '0 auto' }}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full bg-white rounded-t-2xl max-h-[85vh] flex flex-col animate-slide-up">
+      <div className="relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[85vh] flex flex-col animate-slide-up">
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
           <h2 className="text-lg font-bold text-gray-900">Minha Sacola</h2>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"><X size={20} /></button>
@@ -336,9 +349,9 @@ function DeliveryModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end" style={{ maxWidth: '480px', left: 0, right: 0, margin: '0 auto' }}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full bg-white rounded-t-2xl p-6 animate-slide-up">
+      <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-bold text-gray-900">Calcular Entrega</h2>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"><X size={20} /></button>
@@ -423,24 +436,42 @@ function DeliveryModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 }
 
 // ── Store info modal ──────────────────────────────────────────────────────────
-function StoreInfoModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+function StoreInfoModal({ isOpen, onClose, settings }: {
+  isOpen: boolean;
+  onClose: () => void;
+  settings: StoreSettings | null;
+}) {
   if (!isOpen) return null;
+
+  const items = [
+    settings?.address_display && { icon: MapPin, title: 'Endereço', text: settings.address_display },
+    settings?.opening_hours   && { icon: Clock,  title: 'Horário',   text: settings.opening_hours },
+    (settings?.whatsapp_number || settings?.phone_number) && {
+      icon: Phone, title: 'Contato',
+      text: [
+        settings?.whatsapp_number ? `WhatsApp: ${settings.whatsapp_number}` : null,
+        settings?.phone_number    ? `Telefone: ${settings.phone_number}` : null,
+      ].filter(Boolean).join('\n'),
+    },
+    settings?.delivery_info && { icon: Bike, title: 'Entrega', text: settings.delivery_info },
+    (settings?.min_order_value ?? 0) > 0 && {
+      icon: Package, title: 'Pedido Mínimo',
+      text: `R$ ${(settings?.min_order_value ?? 0).toFixed(2).replace('.', ',')}`,
+    },
+  ].filter(Boolean) as { icon: React.ElementType; title: string; text: string }[];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end" style={{ maxWidth: '480px', left: 0, right: 0, margin: '0 auto' }}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full bg-white rounded-t-2xl p-6 animate-slide-up">
+      <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-bold text-gray-900">Informações da Loja</h2>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"><X size={20} /></button>
         </div>
         <div className="space-y-4">
-          {[
-            { icon: MapPin, title: 'Endereço', text: 'Londrina - PR' },
-            { icon: Clock, title: 'Horário de Funcionamento', text: 'Segunda a Domingo\n08:00 às 23:59' },
-            { icon: Phone, title: 'Contato', text: 'WhatsApp: (43) 9 9999-9999' },
-            { icon: Bike, title: 'Entrega', text: 'Taxa a partir de R$ 5,00\nTempo estimado: 30-60 min' },
-            { icon: Package, title: 'Pedido Mínimo', text: 'R$ 30,00' },
-          ].map(item => (
+          {items.length === 0 ? (
+            <p className="text-gray-400 text-sm text-center py-4">Nenhuma informação configurada ainda.</p>
+          ) : items.map(item => (
             <div key={item.title} className="flex items-start gap-3">
               <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
                 <item.icon size={20} className="text-purple-600" />
@@ -461,9 +492,9 @@ function StoreInfoModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 function PromoModal({ promo, onClose }: { promo: Promotion | null; onClose: () => void }) {
   if (!promo) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end" style={{ maxWidth: '480px', left: 0, right: 0, margin: '0 auto' }}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full bg-white rounded-t-2xl animate-slide-up overflow-hidden">
+      <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl animate-slide-up overflow-hidden">
         <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
           <Image src={promo.image_url || '/banner.png'} alt={promo.title} fill className="object-cover" />
           <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 bg-black/50 text-white rounded-full flex items-center justify-center"><X size={16} /></button>
@@ -484,9 +515,9 @@ function CategoryDropdown({ isOpen, onClose, selectedCategory, onSelect, categor
 }) {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50" style={{ maxWidth: '480px', left: 0, right: 0, margin: '0 auto' }}>
+    <div className="fixed inset-0 z-50 flex justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full bg-white rounded-b-2xl max-h-[70vh] flex flex-col shadow-xl">
+      <div className="relative w-full sm:max-w-md bg-white rounded-b-2xl max-h-[70vh] flex flex-col shadow-xl">
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
           <h2 className="text-base font-bold text-gray-900">Categorias</h2>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"><X size={20} /></button>
@@ -523,6 +554,7 @@ export default function HomePage() {
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
+  const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -534,7 +566,8 @@ export default function HomePage() {
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
-      const [promotionsRes, categoriesRes, productsRes] = await Promise.all([
+      const [settingsRes, promotionsRes, categoriesRes, productsRes] = await Promise.all([
+        supabase.from('store_settings').select('store_name,logo_url,cover_url,whatsapp_number,phone_number,address_display,opening_hours,min_order_value,delivery_info,is_open').eq('id', 'default').single(),
         supabase.from('promotions').select('*').eq('active', true).order('sort_order'),
         supabase.from('categories').select('*').eq('active', true).order('sort_order'),
         supabase.from('products').select(`
@@ -543,6 +576,7 @@ export default function HomePage() {
         `).eq('active', true).order('sort_order'),
       ]);
 
+      if (settingsRes.data) setStoreSettings(settingsRes.data as StoreSettings);
       if (promotionsRes.data) setPromotions(promotionsRes.data);
       if (categoriesRes.data) setCategories(categoriesRes.data);
       if (productsRes.data) {
@@ -590,27 +624,29 @@ export default function HomePage() {
       {/* Banner Header */}
       <div className="relative w-full">
         <div className="relative w-full" style={{ aspectRatio: '1280/466' }}>
-          <Image src="/banner.png" alt="POD House Banner" fill className="object-cover" priority />
+          <Image src={storeSettings?.cover_url || '/banner.png'} alt="Banner" fill className="object-cover" priority />
         </div>
         <div className="absolute -bottom-10 left-1/2 -translate-x-1/2">
           <div className="w-20 h-20 rounded-full border-4 border-white overflow-hidden shadow-lg bg-white">
-            <Image src="/logo.png" alt="POD House Logo" width={80} height={80} className="w-full h-full object-cover" />
+            <Image src={storeSettings?.logo_url || '/logo.png'} alt="Logo" width={80} height={80} className="w-full h-full object-cover" />
           </div>
         </div>
       </div>
 
       {/* Store Info */}
       <div className="mt-12 px-4 pb-4 text-center border-b border-gray-100">
-        <h1 className="text-xl font-bold text-gray-900 mb-1">POD House</h1>
+        <h1 className="text-xl font-bold text-gray-900 mb-1">{storeSettings?.store_name || 'POD House'}</h1>
         <div className="flex items-center justify-center gap-2 text-gray-500 text-sm mb-1">
           <MapPin size={14} className="text-gray-400" />
-          <span>Londrina - PR</span>
+          <span>{storeSettings?.address_display || 'Londrina - PR'}</span>
           <span className="text-gray-300">•</span>
           <button onClick={() => setIsStoreInfoOpen(true)} className="text-purple-600 font-medium hover:underline">Mais informações</button>
         </div>
-        <p className="text-green-500 font-semibold text-sm flex items-center justify-center gap-1">
+        <p className={`font-semibold text-sm flex items-center justify-center gap-1 ${storeSettings?.is_open !== false ? 'text-green-500' : 'text-red-400'}`}>
           <Clock size={13} />
-          Aberto até às 23h59
+          {storeSettings?.is_open !== false
+            ? (storeSettings?.opening_hours || 'Aberto')
+            : 'Fechado no momento'}
         </p>
       </div>
 
@@ -679,7 +715,7 @@ export default function HomePage() {
               {[1, 2].map(i => <div key={i} className="bg-gray-100 rounded-xl aspect-square animate-pulse" />)}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {featuredProducts.map(product => (
                 <ProductCard key={product.id} product={product} onAdd={handleAddToCart} />
               ))}
@@ -725,7 +761,7 @@ export default function HomePage() {
               <p className="text-gray-400 text-sm mt-1">Tente outra busca ou categoria</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {filteredProducts.map(product => <ProductCard key={product.id} product={product} onAdd={handleAddToCart} />)}
             </div>
           )}
@@ -768,8 +804,8 @@ export default function HomePage() {
   const renderPedidos = () => <OrdersTab setActiveTab={setActiveTab} />;
 
   return (
-    <div className="relative min-h-screen bg-white" style={{ maxWidth: '480px', margin: '0 auto' }}>
-      <main>
+    <div className="relative min-h-screen bg-white">
+      <main className="max-w-2xl mx-auto">
         {activeTab === 'inicio' && renderInicio()}
         {activeTab === 'promocoes' && renderPromocoes()}
         {activeTab === 'pedidos' && renderPedidos()}
@@ -777,7 +813,7 @@ export default function HomePage() {
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 bg-white border-t border-gray-200 flex items-center z-40" style={{ maxWidth: '480px', left: 0, right: 0, margin: '0 auto', height: '70px' }}>
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-center z-40 h-[70px] max-w-2xl mx-auto">
         {[
           { id: 'inicio', icon: Home, label: 'Início' },
           { id: 'promocoes', icon: Tag, label: 'Promoções' },
@@ -793,7 +829,7 @@ export default function HomePage() {
 
       {/* Cart FAB */}
       {cart.totalItems > 0 && (
-        <button onClick={() => setIsCartOpen(true)} className="fixed w-14 h-14 bg-purple-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-purple-700 transition-colors z-30" style={{ bottom: '90px', right: '16px' }}>
+        <button onClick={() => setIsCartOpen(true)} className="fixed bottom-[90px] right-4 w-14 h-14 bg-purple-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-purple-700 transition-colors z-30">
           <ShoppingBag size={24} />
           <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">{cart.totalItems}</span>
         </button>
@@ -803,7 +839,7 @@ export default function HomePage() {
       <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart.items} onUpdateQuantity={cart.updateQty} onRemove={cart.removeItem} onCheckout={() => { setIsCartOpen(false); setIsCheckoutOpen(true); }} />
       <CheckoutFlow isOpen={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} />
       <DeliveryModal isOpen={isDeliveryOpen} onClose={() => setIsDeliveryOpen(false)} />
-      <StoreInfoModal isOpen={isStoreInfoOpen} onClose={() => setIsStoreInfoOpen(false)} />
+      <StoreInfoModal isOpen={isStoreInfoOpen} onClose={() => setIsStoreInfoOpen(false)} settings={storeSettings} />
       <PromoModal promo={selectedPromo} onClose={() => setSelectedPromo(null)} />
       <CategoryDropdown isOpen={isCategoryDropdownOpen} onClose={() => setIsCategoryDropdownOpen(false)} selectedCategory={selectedCategory} onSelect={setSelectedCategory} categories={categories} />
     </div>

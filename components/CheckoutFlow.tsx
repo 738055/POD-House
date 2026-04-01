@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, ChevronLeft, Loader2, Check, MapPin, Tag, Star, MessageCircle, Send, Truck, AlertTriangle, Navigation2 } from 'lucide-react';
+import { X, ChevronLeft, Loader2, Check, MapPin, Tag, Star, MessageCircle, Send, Truck, AlertTriangle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth }  from '@/hooks/use-auth';
 import { useCart }  from '@/hooks/use-cart';
-import type { Address, Neighborhood, CouponValidation } from '@/lib/supabase/types';
+import type { Address, CouponValidation } from '@/lib/supabase/types';
 
 interface Props {
   isOpen: boolean;
@@ -33,7 +33,7 @@ interface ZoneResult {
   delivery_fee: number;
   estimated_minutes: number;
   distance_meters: number;
-  radius_meters: number;
+  is_default: boolean; // true = taxa padrão (fora das zonas cadastradas)
 }
 
 const EMPTY_ADDR: FormAddress = { logradouro: '', number: '', complement: '', neighborhood: '', city: 'Londrina', uf: 'PR', cep: '' };
@@ -63,10 +63,6 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
   const [zoneResult, setZoneResult]     = useState<ZoneResult | null>(null);
   const [zoneError, setZoneError]       = useState<string | null>(null);
 
-  // Step delivery (fallback manual)
-  const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
-  const [selectedNeighborhood, setSelectedNeighborhood] = useState<Neighborhood | null>(null);
-
   // Step extras
   const [couponCode, setCouponCode]       = useState('');
   const [couponResult, setCouponResult]   = useState<CouponValidation | null>(null);
@@ -74,17 +70,16 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
   const [usePoints, setUsePoints]         = useState(false);
   const [pointsToRedeem, setPointsToRedeem] = useState(0);
 
-  // Frete: prioriza zona automática, depois bairro manual
-  const deliveryFee    = zoneResult?.delivery_fee ?? selectedNeighborhood?.delivery_fee ?? 0;
+  // Frete: detectado automaticamente via polígono/zona
+  const deliveryFee    = zoneResult?.delivery_fee ?? 0;
   const couponDiscount = couponResult?.valid ? (couponResult.type === 'free_delivery' ? deliveryFee : (couponResult.discount ?? 0)) : 0;
   const pointsDiscount = usePoints ? Math.round((pointsToRedeem / 100) * 5 * 100) / 100 : 0;
   const maxPoints      = profile ? Math.min(profile.points_balance, Math.floor(totalPrice / 5) * 100) : 0;
   const total          = Math.max(0, totalPrice + deliveryFee - couponDiscount - pointsDiscount);
 
-  // Se zona foi auto-detectada, pula etapa 'delivery' manual
-  const ALL_STEPS: Step[] = ['info', 'address', 'delivery', 'extras', 'summary'];
-  const stepsToShow = (user ? ALL_STEPS.filter(s => s !== 'info') : ALL_STEPS)
-    .filter(s => s !== 'delivery' || !zoneResult); // remove 'delivery' quando zona foi auto-detectada
+  // Sem etapa de seleção manual de bairro — detecção automática por polígono
+  const ALL_STEPS: Step[] = ['info', 'address', 'extras', 'summary'];
+  const stepsToShow = user ? ALL_STEPS.filter(s => s !== 'info') : ALL_STEPS;
 
   useEffect(() => {
     if (isOpen) {
@@ -93,7 +88,6 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
       setOrderSuccess(null);
       setZoneResult(null);
       setZoneError(null);
-      setSelectedNeighborhood(null);
       if (user) {
         setName(profile?.full_name ?? '');
         setPhone(profile?.phone ?? '');
@@ -106,9 +100,6 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
       supabase.from('addresses').select('*').eq('user_id', user.id).order('is_default', { ascending: false })
         .then(({ data }) => { if (data) setSavedAddresses(data as Address[]); });
     }
-    supabase.from('neighborhoods').select('*').order('name').then(({ data }) => {
-      if (data) setNeighborhoods(data as Neighborhood[]);
-    });
   }, [isOpen, user]);
 
   if (!isOpen) return null;
@@ -132,11 +123,6 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
           city:         data.localidade   ?? prev.city,
           uf:           data.uf           ?? prev.uf,
         }));
-        // Tenta match manual por nome de bairro (fallback)
-        const bairro = data.bairro?.toLowerCase() ?? '';
-        const found = neighborhoods.find(n => bairro.includes(n.name_normalized));
-        if (found) setSelectedNeighborhood(found);
-
         // Inicia geocoding em paralelo
         geocodeAndCheckZone(clean);
       }
@@ -185,7 +171,6 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
         }
       } else if (data) {
         setZoneResult(data as ZoneResult);
-        setSelectedNeighborhood(null);
       }
     } catch {
       // Falha de rede — modo silencioso
@@ -259,9 +244,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
     const addrText = `${addr.logradouro}, ${addr.number}${addr.complement ? ', ' + addr.complement : ''} — ${addr.neighborhood}, ${addr.city}-${addr.uf} CEP ${addr.cep}`;
 
     const entregaText = zoneResult
-      ? `*Zona:* ${zoneResult.zone_name} (${(zoneResult.distance_meters / 1000).toFixed(1)} km)`
-      : selectedNeighborhood
-      ? `*Bairro:* ${selectedNeighborhood.name}`
+      ? `*Zona:* ${zoneResult.zone_name}${zoneResult.distance_meters ? ` (${(zoneResult.distance_meters / 1000).toFixed(1)} km)` : ''}`
       : null;
 
     const msg = [
@@ -300,8 +283,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
 
   function canNext(): boolean {
     if (step === 'info')     return name.trim().length > 0 && phone.replace(/\D/g, '').length >= 10;
-    if (step === 'address')  return !!(selectedAddrId || (formAddr.logradouro && formAddr.number && formAddr.cep.length === 8)) && !zoneLoading;
-    if (step === 'delivery') return !!(zoneResult || selectedNeighborhood);
+    if (step === 'address')  return !!(selectedAddrId || (formAddr.logradouro && formAddr.number && formAddr.cep.length === 8)) && !zoneLoading && !zoneError;
     if (step === 'extras')   return true;
     return false;
   }
@@ -322,8 +304,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
     switch (step) {
       case 'info':     return 'Seus dados';
       case 'address':  return 'Endereço de entrega';
-      case 'delivery': return 'Forma de entrega';
-      case 'extras':   return 'Cupom & Pontos';
+        case 'extras':   return 'Cupom & Pontos';
       case 'summary':  return 'Confirmar pedido';
     }
   }
@@ -331,9 +312,9 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
   // ── Tela de sucesso ──
   if (orderSuccess) {
     return (
-      <div className="fixed inset-0 z-50 flex items-end" style={{ maxWidth: '480px', left: 0, right: 0, margin: '0 auto' }}>
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
         <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-        <div className="relative w-full bg-white rounded-t-2xl animate-slide-up p-6 text-center">
+        <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl animate-slide-up p-6 text-center">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Check size={40} className="text-green-500" />
           </div>
@@ -473,23 +454,33 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                   {/* Feedback de zona de entrega logo após o CEP */}
                   {!zoneLoading && (zoneResult || zoneError) && (
                     <div className={`rounded-xl px-4 py-3 flex items-start gap-3 ${
-                      zoneResult ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                      zoneResult
+                        ? zoneResult.is_default
+                          ? 'bg-amber-50 border border-amber-200'
+                          : 'bg-green-50 border border-green-200'
+                        : 'bg-red-50 border border-red-200'
                     }`}>
                       {zoneResult ? (
                         <>
-                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <Truck size={15} className="text-green-600" />
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${zoneResult.is_default ? 'bg-amber-100' : 'bg-green-100'}`}>
+                            <Truck size={15} className={zoneResult.is_default ? 'text-amber-600' : 'text-green-600'} />
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm font-bold text-green-800">Entrega disponível!</p>
-                            <p className="text-xs text-green-700 mt-0.5">
-                              <strong>{zoneResult.zone_name}</strong> · {(zoneResult.distance_meters / 1000).toFixed(1)} km de distância
+                            <p className={`text-sm font-bold ${zoneResult.is_default ? 'text-amber-800' : 'text-green-800'}`}>
+                              {zoneResult.is_default ? 'Entrega fora da área padrão' : 'Entrega disponível!'}
+                            </p>
+                            <p className={`text-xs mt-0.5 ${zoneResult.is_default ? 'text-amber-700' : 'text-green-700'}`}>
+                              {zoneResult.is_default
+                                ? `Taxa de entrega geral · ${(zoneResult.distance_meters / 1000).toFixed(1)} km`
+                                : `${zoneResult.zone_name} · ${(zoneResult.distance_meters / 1000).toFixed(1)} km`}
                             </p>
                             <div className="flex items-center gap-3 mt-2">
-                              <span className="text-sm font-black text-green-900">
-                                {zoneResult.delivery_fee === 0 ? '🎉 Grátis' : fmt(zoneResult.delivery_fee)}
+                              <span className={`text-sm font-black ${zoneResult.is_default ? 'text-amber-900' : 'text-green-900'}`}>
+                                {zoneResult.delivery_fee === 0 ? 'Grátis' : fmt(zoneResult.delivery_fee)}
                               </span>
-                              <span className="text-xs text-green-700">~{zoneResult.estimated_minutes} min</span>
+                              <span className={`text-xs ${zoneResult.is_default ? 'text-amber-700' : 'text-green-700'}`}>
+                                ~{zoneResult.estimated_minutes} min
+                              </span>
                             </div>
                           </div>
                         </>
@@ -501,7 +492,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                           <div>
                             <p className="text-sm font-bold text-red-800">Fora da área de entrega</p>
                             <p className="text-xs text-red-600 mt-0.5">{zoneError}</p>
-                            <p className="text-xs text-red-500 mt-1">Selecione o bairro manualmente na próxima etapa ou tente outro CEP.</p>
+                            <p className="text-xs text-red-500 mt-1">Entre em contato pelo WhatsApp para verificar disponibilidade.</p>
                           </div>
                         </>
                       )}
@@ -540,39 +531,6 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
             </div>
           )}
 
-          {/* STEP: DELIVERY (só aparece quando zona NÃO foi auto-detectada) */}
-          {step === 'delivery' && (
-            <div className="space-y-3">
-              {/* Zona fora da área — mostra aviso e ainda permite seleção manual */}
-              {zoneError && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3 mb-2">
-                  <Navigation2 size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-amber-700">
-                    O CEP informado está fora das zonas automáticas. Selecione manualmente o bairro mais próximo.
-                  </p>
-                </div>
-              )}
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Selecione o bairro de entrega</p>
-              {neighborhoods.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-6">Nenhum bairro cadastrado.</p>
-              )}
-              {neighborhoods.map(n => (
-                <button key={n.id} onClick={() => setSelectedNeighborhood(n)}
-                  className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition-all ${
-                    selectedNeighborhood?.id === n.id ? 'border-purple-600 bg-purple-50' : 'border-gray-200'
-                  }`}>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">{n.name}</p>
-                    <p className="text-xs text-gray-500">{n.estimated_minutes} min estimado</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-gray-900">{n.delivery_fee === 0 ? 'Grátis' : fmt(n.delivery_fee)}</p>
-                    {selectedNeighborhood?.id === n.id && <Check size={14} className="text-purple-600 ml-auto mt-0.5" />}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
 
           {/* STEP: EXTRAS */}
           {step === 'extras' && (
@@ -587,11 +545,6 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                     {zoneResult && (
                       <span className="ml-2 text-xs text-gray-400 font-normal">
                         {zoneResult.zone_name} · ~{zoneResult.estimated_minutes} min
-                      </span>
-                    )}
-                    {selectedNeighborhood && !zoneResult && (
-                      <span className="ml-2 text-xs text-gray-400 font-normal">
-                        {selectedNeighborhood.name} · ~{selectedNeighborhood.estimated_minutes} min
                       </span>
                     )}
                   </p>
@@ -678,7 +631,6 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                   <span>
                     Entrega
                     {zoneResult && <span className="text-gray-400 text-xs ml-1">({zoneResult.zone_name})</span>}
-                    {selectedNeighborhood && !zoneResult && <span className="text-gray-400 text-xs ml-1">({selectedNeighborhood.name})</span>}
                   </span>
                   <span>{deliveryFee === 0 ? 'Grátis' : fmt(deliveryFee)}</span>
                 </div>
