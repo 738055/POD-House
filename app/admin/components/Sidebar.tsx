@@ -16,6 +16,8 @@ import {
   Tag,
   ChevronRight,
   Settings,
+  Truck,
+  Boxes,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
@@ -32,6 +34,8 @@ const menuItems = [
   { name: 'Pedidos', href: '/admin/orders', icon: ShoppingBag },
   { name: 'Promoções', href: '/admin/promotions', icon: Tag },
   { name: 'Cupons', href: '/admin/coupons', icon: Ticket },
+  { name: 'Zonas Entrega', href: '/admin/delivery-zones', icon: Truck },
+  { name: 'Estoque', href: '/admin/stock', icon: Boxes },
   { name: 'Bairros', href: '/admin/neighborhoods', icon: MapPin },
   { name: 'Usuários', href: '/admin/users', icon: Users },
   { name: 'WhatsApp', href: '/admin/whatsapp', icon: MessageSquare },

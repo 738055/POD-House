@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, ChevronLeft, Loader2, Check, MapPin, Tag, Star, MessageCircle, Send } from 'lucide-react';
+import { X, ChevronLeft, Loader2, Check, MapPin, Tag, Star, MessageCircle, Send, Truck, AlertTriangle, Navigation2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth }  from '@/hooks/use-auth';
 import { useCart }  from '@/hooks/use-cart';
@@ -28,11 +28,19 @@ interface FormAddress {
   cep: string;
 }
 
+interface ZoneResult {
+  zone_name: string;
+  delivery_fee: number;
+  estimated_minutes: number;
+  distance_meters: number;
+  radius_meters: number;
+}
+
 const EMPTY_ADDR: FormAddress = { logradouro: '', number: '', complement: '', neighborhood: '', city: 'Londrina', uf: 'PR', cep: '' };
 
 export default function CheckoutFlow({ isOpen, onClose }: Props) {
   const supabase = createClient();
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshSession } = useAuth();
   const { items, totalPrice, clearCart } = useCart();
 
   const [step, setStep] = useState<Step>('info');
@@ -50,29 +58,42 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
   const [formAddr, setFormAddr] = useState<FormAddress>(EMPTY_ADDR);
   const [loadingCep, setLoadingCep] = useState(false);
 
-  // Step delivery
+  // Zona detectada automaticamente via GPS/raio
+  const [zoneLoading, setZoneLoading]   = useState(false);
+  const [zoneResult, setZoneResult]     = useState<ZoneResult | null>(null);
+  const [zoneError, setZoneError]       = useState<string | null>(null);
+
+  // Step delivery (fallback manual)
   const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
   const [selectedNeighborhood, setSelectedNeighborhood] = useState<Neighborhood | null>(null);
 
   // Step extras
-  const [couponCode, setCouponCode]   = useState('');
-  const [couponResult, setCouponResult] = useState<CouponValidation | null>(null);
+  const [couponCode, setCouponCode]       = useState('');
+  const [couponResult, setCouponResult]   = useState<CouponValidation | null>(null);
   const [loadingCoupon, setLoadingCoupon] = useState(false);
-  const [usePoints, setUsePoints]     = useState(false);
+  const [usePoints, setUsePoints]         = useState(false);
   const [pointsToRedeem, setPointsToRedeem] = useState(0);
 
-  // Calculos
-  const deliveryFee     = selectedNeighborhood?.delivery_fee ?? 0;
-  const couponDiscount  = couponResult?.valid ? (couponResult.type === 'free_delivery' ? deliveryFee : (couponResult.discount ?? 0)) : 0;
-  const pointsDiscount  = usePoints ? Math.round((pointsToRedeem / 100) * 5 * 100) / 100 : 0;
-  const maxPoints       = profile ? Math.min(profile.points_balance, Math.floor(totalPrice / 5) * 100) : 0;
-  const total           = Math.max(0, totalPrice + deliveryFee - couponDiscount - pointsDiscount);
+  // Frete: prioriza zona automática, depois bairro manual
+  const deliveryFee    = zoneResult?.delivery_fee ?? selectedNeighborhood?.delivery_fee ?? 0;
+  const couponDiscount = couponResult?.valid ? (couponResult.type === 'free_delivery' ? deliveryFee : (couponResult.discount ?? 0)) : 0;
+  const pointsDiscount = usePoints ? Math.round((pointsToRedeem / 100) * 5 * 100) / 100 : 0;
+  const maxPoints      = profile ? Math.min(profile.points_balance, Math.floor(totalPrice / 5) * 100) : 0;
+  const total          = Math.max(0, totalPrice + deliveryFee - couponDiscount - pointsDiscount);
+
+  // Se zona foi auto-detectada, pula etapa 'delivery' manual
+  const ALL_STEPS: Step[] = ['info', 'address', 'delivery', 'extras', 'summary'];
+  const stepsToShow = (user ? ALL_STEPS.filter(s => s !== 'info') : ALL_STEPS)
+    .filter(s => s !== 'delivery' || !zoneResult); // remove 'delivery' quando zona foi auto-detectada
 
   useEffect(() => {
     if (isOpen) {
       setStep(user ? 'address' : 'info');
       setError(null);
       setOrderSuccess(null);
+      setZoneResult(null);
+      setZoneError(null);
+      setSelectedNeighborhood(null);
       if (user) {
         setName(profile?.full_name ?? '');
         setPhone(profile?.phone ?? '');
@@ -92,28 +113,84 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
 
   if (!isOpen) return null;
 
-  // ── CEP lookup ──
+  // ── 1. ViaCEP → preenche endereço ──
   async function lookupCep(cep: string) {
     const clean = cep.replace(/\D/g, '');
     if (clean.length !== 8) return;
     setLoadingCep(true);
+    setZoneResult(null);
+    setZoneError(null);
     try {
-      const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`);
+      const res  = await fetch(`https://viacep.com.br/ws/${clean}/json/`);
       const data = await res.json();
       if (!data.erro) {
         setFormAddr(prev => ({
-          ...prev, cep: clean,
-          logradouro: data.logradouro ?? prev.logradouro,
-          neighborhood: data.bairro ?? prev.neighborhood,
-          city: data.localidade ?? prev.city,
-          uf: data.uf ?? prev.uf,
+          ...prev,
+          cep: clean,
+          logradouro:   data.logradouro   ?? prev.logradouro,
+          neighborhood: data.bairro       ?? prev.neighborhood,
+          city:         data.localidade   ?? prev.city,
+          uf:           data.uf           ?? prev.uf,
         }));
+        // Tenta match manual por nome de bairro (fallback)
         const bairro = data.bairro?.toLowerCase() ?? '';
         const found = neighborhoods.find(n => bairro.includes(n.name_normalized));
         if (found) setSelectedNeighborhood(found);
+
+        // Inicia geocoding em paralelo
+        geocodeAndCheckZone(clean);
       }
     } finally {
       setLoadingCep(false);
+    }
+  }
+
+  // ── 2. Nominatim geocode → RPC frete por coordenadas ──
+  async function geocodeAndCheckZone(cep: string) {
+    setZoneLoading(true);
+    try {
+      const geoRes = await fetch(
+        `https://nominatim.openstreetmap.org/search?postalcode=${cep}&countrycodes=br&format=json&limit=1`,
+        { headers: { 'User-Agent': 'POD-House/1.0', 'Accept-Language': 'pt-BR' } }
+      );
+      const geoData = await geoRes.json();
+
+      if (!Array.isArray(geoData) || geoData.length === 0) {
+        // CEP não encontrado no mapa — sem erro visível, apenas usa seleção manual
+        return;
+      }
+
+      const lat = parseFloat(geoData[0].lat);
+      const lng = parseFloat(geoData[0].lon);
+
+      const { data, error: rpcError } = await (supabase.rpc as any)('get_delivery_fee_by_coords', {
+        p_lat: lat,
+        p_lng: lng,
+      });
+
+      if (rpcError) {
+        // RPC falhou — modo silencioso, mantém seleção manual
+        return;
+      }
+
+      if (data?.error) {
+        // "Fora da área" ou "loja não configurada"
+        if (data.error.toLowerCase().includes('não configurada')) {
+          // Loja sem zonas configuradas — fallback silencioso
+          return;
+        }
+        setZoneError(data.error);
+        if (data.distance_meters) {
+          setZoneError(`${data.error} (${(data.distance_meters / 1000).toFixed(1)} km de distância)`);
+        }
+      } else if (data) {
+        setZoneResult(data as ZoneResult);
+        setSelectedNeighborhood(null);
+      }
+    } catch {
+      // Falha de rede — modo silencioso
+    } finally {
+      setZoneLoading(false);
     }
   }
 
@@ -132,7 +209,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
     setLoadingCoupon(false);
   }
 
-  // ── Finalizar pedido: salva no banco + abre WhatsApp ──
+  // ── Finalizar pedido ──
   async function submitOrder() {
     setLoading(true);
     setError(null);
@@ -153,7 +230,6 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
       quantity: i.quantity,
     }));
 
-    // Salvar pedido no banco (status: pending, sem pontos)
     const { data, error: rpcError } = await (supabase.rpc as any)('place_order', {
       p_user_id:          user?.id ?? null,
       p_address:          addr,
@@ -173,15 +249,20 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
     }
 
     const result = data as { order_id: string; total: number; points_earned: number };
-    if (user) await refreshProfile();
+    if (user) await refreshSession();
     await clearCart();
 
-    // Montar mensagem WhatsApp
     const itemsText = items.map(i =>
       `  ${i.quantity}x ${i.productName} — ${i.variantName} = ${fmt(i.unitPrice * i.quantity)}`
     ).join('\n');
 
     const addrText = `${addr.logradouro}, ${addr.number}${addr.complement ? ', ' + addr.complement : ''} — ${addr.neighborhood}, ${addr.city}-${addr.uf} CEP ${addr.cep}`;
+
+    const entregaText = zoneResult
+      ? `*Zona:* ${zoneResult.zone_name} (${(zoneResult.distance_meters / 1000).toFixed(1)} km)`
+      : selectedNeighborhood
+      ? `*Bairro:* ${selectedNeighborhood.name}`
+      : null;
 
     const msg = [
       `*NOVO PEDIDO - POD HOUSE* 🛒`,
@@ -194,7 +275,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
       itemsText,
       ``,
       `*Endereço:* ${addrText}`,
-      selectedNeighborhood ? `*Bairro:* ${selectedNeighborhood.name}` : null,
+      entregaText,
       `*Frete:* ${deliveryFee === 0 ? 'Grátis' : fmt(deliveryFee)}`,
       couponDiscount > 0 ? `*Cupom (${couponCode}):* -${fmt(couponDiscount)}` : null,
       pointsDiscount > 0 ? `*Pontos:* -${fmt(pointsDiscount)}` : null,
@@ -212,31 +293,40 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
     setLoading(false);
   }
 
-  // ── Navegação entre steps ──
-  const STEPS: Step[] = ['info', 'address', 'delivery', 'extras', 'summary'];
-  const stepIndex = STEPS.indexOf(step);
+  // ── Navegação ──
+  const stepIndex     = ALL_STEPS.indexOf(step);
+  const shownIndex    = stepsToShow.indexOf(step);
+  const totalShownSteps = stepsToShow.length;
 
   function canNext(): boolean {
     if (step === 'info')     return name.trim().length > 0 && phone.replace(/\D/g, '').length >= 10;
-    if (step === 'address')  return !!(selectedAddrId || (formAddr.logradouro && formAddr.number && formAddr.cep.length === 8));
-    if (step === 'delivery') return !!selectedNeighborhood;
+    if (step === 'address')  return !!(selectedAddrId || (formAddr.logradouro && formAddr.number && formAddr.cep.length === 8)) && !zoneLoading;
+    if (step === 'delivery') return !!(zoneResult || selectedNeighborhood);
     if (step === 'extras')   return true;
     return false;
   }
 
   function nextStep() {
-    const next = STEPS[stepIndex + 1];
+    const curShownIdx = stepsToShow.indexOf(step);
+    const next = stepsToShow[curShownIdx + 1];
     if (next) setStep(next);
   }
 
   function prevStep() {
-    const prev = STEPS[stepIndex - 1];
+    const curShownIdx = stepsToShow.indexOf(step);
+    const prev = stepsToShow[curShownIdx - 1];
     if (prev) setStep(prev);
   }
 
-  const stepsToShow = user ? STEPS.filter(s => s !== 'info') : STEPS;
-  const currentStepIndex = stepsToShow.indexOf(step);
-  const totalSteps = stepsToShow.length;
+  function getStepTitle() {
+    switch (step) {
+      case 'info':     return 'Seus dados';
+      case 'address':  return 'Endereço de entrega';
+      case 'delivery': return 'Forma de entrega';
+      case 'extras':   return 'Cupom & Pontos';
+      case 'summary':  return 'Confirmar pedido';
+    }
+  }
 
   // ── Tela de sucesso ──
   if (orderSuccess) {
@@ -254,7 +344,6 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
           <p className="text-gray-400 text-sm mb-6">
             Seu pedido foi salvo e enviado via WhatsApp. O vendedor irá confirmar e você receberá seus pontos de fidelidade!
           </p>
-
           <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-6">
             <div className="flex items-center justify-center gap-2 text-purple-700 mb-1">
               <Star size={16} />
@@ -264,9 +353,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
               Você receberá <strong>{Math.floor(orderSuccess.total)} pontos</strong> quando o vendedor confirmar seu pedido!
             </p>
           </div>
-
-          <button onClick={onClose}
-            className="w-full bg-black text-white font-bold py-4 rounded-xl">
+          <button onClick={onClose} className="w-full bg-black text-white font-bold py-4 rounded-xl">
             Voltar para a loja
           </button>
         </div>
@@ -281,16 +368,14 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
 
         {/* Header */}
         <div className="flex items-center gap-3 p-4 border-b border-gray-100 flex-shrink-0">
-          {stepIndex > (user ? 1 : 0) && (
+          {shownIndex > 0 && (
             <button onClick={prevStep} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">
               <ChevronLeft size={20} />
             </button>
           )}
           <div className="flex-1">
-            <h2 className="text-base font-bold text-gray-900">
-              {step === 'info' ? 'Seus dados' : step === 'address' ? 'Endereço' : step === 'delivery' ? 'Entrega' : step === 'extras' ? 'Cupom & Pontos' : 'Resumo'}
-            </h2>
-            <p className="text-xs text-gray-400">Etapa {currentStepIndex + 1} de {totalSteps}</p>
+            <h2 className="text-base font-bold text-gray-900">{getStepTitle()}</h2>
+            <p className="text-xs text-gray-400">Etapa {shownIndex + 1} de {totalShownSteps}</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">
             <X size={20} />
@@ -300,10 +385,10 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
         {/* Progress */}
         <div className="h-1 bg-gray-100 flex-shrink-0">
           <div className="h-full bg-purple-600 transition-all duration-300"
-            style={{ width: `${((currentStepIndex + 1) / totalSteps) * 100}%` }} />
+            style={{ width: `${((shownIndex + 1) / totalShownSteps) * 100}%` }} />
         </div>
 
-        {/* Conteúdo */}
+        {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
           {error && (
             <div className="mb-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">{error}</div>
@@ -338,17 +423,18 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                 <div className="space-y-2 mb-2">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Endereços salvos</p>
                   {savedAddresses.map(a => (
-                    <button key={a.id} onClick={() => setSelectedAddrId(a.id)}
+                    <button key={a.id} onClick={() => { setSelectedAddrId(a.id); setZoneResult(null); setZoneError(null); geocodeAndCheckZone(a.cep); }}
                       className={`w-full flex items-start gap-3 p-3 rounded-xl border-2 text-left transition-all ${
                         selectedAddrId === a.id ? 'border-purple-600 bg-purple-50' : 'border-gray-200'
                       }`}>
                       <MapPin size={16} className="text-gray-500 mt-0.5 flex-shrink-0" />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         {a.label && <p className="text-xs font-bold text-gray-700 uppercase">{a.label}</p>}
                         <p className="text-sm text-gray-800">{a.logradouro}, {a.number}</p>
                         <p className="text-xs text-gray-500">{a.neighborhood} — {a.city}-{a.uf}</p>
+                        <p className="text-xs text-gray-400 font-mono mt-0.5">CEP {a.cep}</p>
                       </div>
-                      {selectedAddrId === a.id && <Check size={16} className="text-purple-600 ml-auto mt-0.5 flex-shrink-0" />}
+                      {selectedAddrId === a.id && <Check size={16} className="text-purple-600 mt-0.5 flex-shrink-0" />}
                     </button>
                   ))}
                   <div className="relative flex items-center gap-2 py-1">
@@ -361,40 +447,91 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
 
               <div onClick={() => setSelectedAddrId(null)} className={selectedAddrId ? 'opacity-60' : ''}>
                 <div className="space-y-3">
+                  {/* CEP */}
                   <div>
                     <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">CEP</label>
                     <div className="relative">
-                      <input type="text" value={formAddr.cep}
-                        onChange={e => { const v = e.target.value.replace(/\D/g,'').slice(0,8); setFormAddr(p=>({...p,cep:v})); if (v.length===8) lookupCep(v); }}
-                        placeholder="00000000" maxLength={8}
+                      <input
+                        type="text"
+                        value={formAddr.cep}
+                        onChange={e => {
+                          const v = e.target.value.replace(/\D/g, '').slice(0, 8);
+                          setFormAddr(p => ({ ...p, cep: v }));
+                          if (v.length === 8) lookupCep(v);
+                          if (v.length < 8) { setZoneResult(null); setZoneError(null); }
+                        }}
+                        placeholder="00000-000"
+                        maxLength={9}
                         className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 pr-10"
                       />
-                      {loadingCep && <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
+                      {(loadingCep || zoneLoading) && (
+                        <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />
+                      )}
                     </div>
                   </div>
+
+                  {/* Feedback de zona de entrega logo após o CEP */}
+                  {!zoneLoading && (zoneResult || zoneError) && (
+                    <div className={`rounded-xl px-4 py-3 flex items-start gap-3 ${
+                      zoneResult ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                    }`}>
+                      {zoneResult ? (
+                        <>
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <Truck size={15} className="text-green-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-bold text-green-800">Entrega disponível!</p>
+                            <p className="text-xs text-green-700 mt-0.5">
+                              <strong>{zoneResult.zone_name}</strong> · {(zoneResult.distance_meters / 1000).toFixed(1)} km de distância
+                            </p>
+                            <div className="flex items-center gap-3 mt-2">
+                              <span className="text-sm font-black text-green-900">
+                                {zoneResult.delivery_fee === 0 ? '🎉 Grátis' : fmt(zoneResult.delivery_fee)}
+                              </span>
+                              <span className="text-xs text-green-700">~{zoneResult.estimated_minutes} min</span>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <AlertTriangle size={15} className="text-red-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-red-800">Fora da área de entrega</p>
+                            <p className="text-xs text-red-600 mt-0.5">{zoneError}</p>
+                            <p className="text-xs text-red-500 mt-1">Selecione o bairro manualmente na próxima etapa ou tente outro CEP.</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Restante do formulário de endereço */}
                   <div>
                     <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Rua</label>
-                    <input value={formAddr.logradouro} onChange={e => setFormAddr(p=>({...p,logradouro:e.target.value}))}
+                    <input value={formAddr.logradouro} onChange={e => setFormAddr(p => ({ ...p, logradouro: e.target.value }))}
                       placeholder="Rua, Avenida..."
                       className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Número</label>
-                      <input value={formAddr.number} onChange={e => setFormAddr(p=>({...p,number:e.target.value}))}
+                      <input value={formAddr.number} onChange={e => setFormAddr(p => ({ ...p, number: e.target.value }))}
                         placeholder="123"
                         className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500" />
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Complemento</label>
-                      <input value={formAddr.complement} onChange={e => setFormAddr(p=>({...p,complement:e.target.value}))}
+                      <input value={formAddr.complement} onChange={e => setFormAddr(p => ({ ...p, complement: e.target.value }))}
                         placeholder="Apto, casa..."
                         className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500" />
                     </div>
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Bairro</label>
-                    <input value={formAddr.neighborhood} onChange={e => setFormAddr(p=>({...p,neighborhood:e.target.value}))}
+                    <input value={formAddr.neighborhood} onChange={e => setFormAddr(p => ({ ...p, neighborhood: e.target.value }))}
                       placeholder="Bairro"
                       className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500" />
                   </div>
@@ -403,10 +540,22 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
             </div>
           )}
 
-          {/* STEP: DELIVERY */}
+          {/* STEP: DELIVERY (só aparece quando zona NÃO foi auto-detectada) */}
           {step === 'delivery' && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Selecione o bairro de entrega</p>
+            <div className="space-y-3">
+              {/* Zona fora da área — mostra aviso e ainda permite seleção manual */}
+              {zoneError && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3 mb-2">
+                  <Navigation2 size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-amber-700">
+                    O CEP informado está fora das zonas automáticas. Selecione manualmente o bairro mais próximo.
+                  </p>
+                </div>
+              )}
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Selecione o bairro de entrega</p>
+              {neighborhoods.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-6">Nenhum bairro cadastrado.</p>
+              )}
               {neighborhoods.map(n => (
                 <button key={n.id} onClick={() => setSelectedNeighborhood(n)}
                   className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition-all ${
@@ -418,7 +567,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-gray-900">{n.delivery_fee === 0 ? 'Grátis' : fmt(n.delivery_fee)}</p>
-                    {selectedNeighborhood?.id === n.id && <Check size={14} className="text-purple-600 ml-auto" />}
+                    {selectedNeighborhood?.id === n.id && <Check size={14} className="text-purple-600 ml-auto mt-0.5" />}
                   </div>
                 </button>
               ))}
@@ -428,6 +577,27 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
           {/* STEP: EXTRAS */}
           {step === 'extras' && (
             <div className="space-y-5">
+              {/* Resumo do frete para referência */}
+              <div className="bg-gray-50 rounded-xl p-3 flex items-center gap-3">
+                <Truck size={16} className="text-purple-500 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-gray-500">Frete</p>
+                  <p className="text-sm font-bold text-gray-900">
+                    {deliveryFee === 0 ? 'Grátis' : fmt(deliveryFee)}
+                    {zoneResult && (
+                      <span className="ml-2 text-xs text-gray-400 font-normal">
+                        {zoneResult.zone_name} · ~{zoneResult.estimated_minutes} min
+                      </span>
+                    )}
+                    {selectedNeighborhood && !zoneResult && (
+                      <span className="ml-2 text-xs text-gray-400 font-normal">
+                        {selectedNeighborhood.name} · ~{selectedNeighborhood.estimated_minutes} min
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
               {/* Cupom */}
               <div>
                 <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2 block flex items-center gap-1.5">
@@ -504,7 +674,20 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
 
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>{fmt(totalPrice)}</span></div>
-                <div className="flex justify-between text-gray-600"><span>Entrega ({selectedNeighborhood?.name})</span><span>{deliveryFee === 0 ? 'Grátis' : fmt(deliveryFee)}</span></div>
+                <div className="flex justify-between text-gray-600">
+                  <span>
+                    Entrega
+                    {zoneResult && <span className="text-gray-400 text-xs ml-1">({zoneResult.zone_name})</span>}
+                    {selectedNeighborhood && !zoneResult && <span className="text-gray-400 text-xs ml-1">({selectedNeighborhood.name})</span>}
+                  </span>
+                  <span>{deliveryFee === 0 ? 'Grátis' : fmt(deliveryFee)}</span>
+                </div>
+                {zoneResult && (
+                  <div className="flex justify-between text-gray-400 text-xs">
+                    <span>Distância</span>
+                    <span>{(zoneResult.distance_meters / 1000).toFixed(1)} km · ~{zoneResult.estimated_minutes} min</span>
+                  </div>
+                )}
                 {couponDiscount > 0 && <div className="flex justify-between text-green-600"><span>Cupom ({couponCode})</span><span>-{fmt(couponDiscount)}</span></div>}
                 {pointsDiscount > 0 && <div className="flex justify-between text-green-600"><span>Pontos ({pointsToRedeem} pts)</span><span>-{fmt(pointsDiscount)}</span></div>}
                 <div className="flex justify-between font-bold text-base text-gray-900 pt-2 border-t border-gray-200">
@@ -516,13 +699,12 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                 <p><strong className="text-gray-800">{name}</strong> — {phone}</p>
                 <p className="mt-0.5">
                   {selectedAddrId
-                    ? (() => { const a = savedAddresses.find(x=>x.id===selectedAddrId); return a ? `${a.logradouro}, ${a.number} — ${a.neighborhood}` : ''; })()
+                    ? (() => { const a = savedAddresses.find(x => x.id === selectedAddrId); return a ? `${a.logradouro}, ${a.number} — ${a.neighborhood}` : ''; })()
                     : `${formAddr.logradouro}, ${formAddr.number} — ${formAddr.neighborhood}`
                   }
                 </p>
               </div>
 
-              {/* Info sobre pontos */}
               <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 flex items-start gap-2">
                 <Star size={16} className="text-purple-500 mt-0.5 flex-shrink-0" />
                 <div className="text-xs text-purple-700">
@@ -545,9 +727,13 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
         {/* Footer */}
         <div className="p-4 border-t border-gray-100 flex-shrink-0">
           {step !== 'summary' ? (
-            <button onClick={nextStep} disabled={!canNext()}
-              className="w-full bg-purple-600 text-white font-bold py-4 rounded-xl disabled:opacity-40 transition-opacity hover:bg-purple-700">
-              Continuar
+            <button
+              onClick={nextStep}
+              disabled={!canNext()}
+              className="w-full bg-purple-600 text-white font-bold py-4 rounded-xl disabled:opacity-40 transition-opacity hover:bg-purple-700 flex items-center justify-center gap-2"
+            >
+              {zoneLoading && step === 'address' && <Loader2 size={16} className="animate-spin" />}
+              {zoneLoading && step === 'address' ? 'Verificando área...' : 'Continuar'}
             </button>
           ) : (
             <button onClick={submitOrder} disabled={loading}

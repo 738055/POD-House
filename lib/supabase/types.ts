@@ -201,6 +201,29 @@ export interface ScheduledPromotion {
   coupons?: Coupon | null;
 }
 
+export interface DeliveryZone {
+  id: string;
+  name: string;
+  radius_meters: number;
+  delivery_fee: number;
+  estimated_minutes: number;
+  color: string;
+  sort_order: number;
+  active: boolean;
+  created_at: string;
+}
+
+export interface StockEntry {
+  id: string;
+  variant_id: string;
+  type: 'in' | 'out' | 'adjustment';
+  quantity: number;
+  cost_per_unit: number | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
 // Placeholder para o tipo Database gerado pelo Supabase CLI
 // Substitua por `supabase gen types typescript` quando disponível
 export type Database = Record<string, unknown>;
