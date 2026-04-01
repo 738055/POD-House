@@ -211,6 +211,8 @@ export interface DeliveryZone {
   sort_order: number;
   active: boolean;
   created_at: string;
+  polygon: [number, number][] | null;
+  polygon_source: 'nominatim' | 'manual' | null;
 }
 
 export interface StockEntry {
