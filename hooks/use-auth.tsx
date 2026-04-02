@@ -32,80 +32,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshSession = useCallback(async (currentSession?: Session | null) => {
-    try {
-      let activeSession = currentSession;
-      if (activeSession === undefined) {
-        const { data: { session: fetchedSession }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-        activeSession = fetchedSession;
-      }
+  async function fetchProfile(userId: string): Promise<Profile | null> {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    return data as Profile | null;
+  }
 
-      setSession(activeSession ?? null);
-      setUser(activeSession?.user ?? null);
-
-      if (activeSession?.user) {
-        const { data: userProfile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', activeSession.user.id)
-          .single();
-        
-        if (profileError) {
-          console.error('Error fetching profile:', profileError.message);
-          setProfile(null);
-        } else {
-          setProfile(userProfile as Profile | null);
-        }
-      } else {
-        setProfile(null);
-      }
-    } catch (error) {
-      console.error('Auth refresh error:', error);
-      setSession(null);
-      setUser(null);
+  // Exposto para forçar reload do perfil quando necessário (ex: edição de dados)
+  const refreshSession = useCallback(async () => {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    setSession(s);
+    setUser(s?.user ?? null);
+    if (s?.user) {
+      const p = await fetchProfile(s.user.id);
+      setProfile(p);
+    } else {
       setProfile(null);
-    } finally {
-      // O 'finally' garante que o loading termine independente de sucesso ou erro!
-      setLoading(false); 
     }
   }, [supabase]);
 
   useEffect(() => {
-    const initAuth = async () => {
-      const { data: { session: initialSession } } = await supabase.auth.getSession();
-      await refreshSession(initialSession);
-    };
-    
-    initAuth();
-
+    // onAuthStateChange dispara INITIAL_SESSION imediatamente com a sessão em cache
+    // — sem round-trip de rede. Profile é buscado só quando o usuário muda.
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        console.log('Auth event:', event);
-        
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-          await refreshSession(newSession);
-        } else if (event === 'SIGNED_OUT') {
+        if (event === 'SIGNED_OUT') {
           setSession(null);
           setUser(null);
           setProfile(null);
           setLoading(false);
+          return;
         }
+
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+
+        // Busca profile apenas em mudanças reais de usuário, não em refresh de token
+        if (newSession?.user && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
+          const p = await fetchProfile(newSession.user.id);
+          setProfile(p);
+        }
+
+        setLoading(false);
       }
     );
 
-    return () => {
-      authListener?.subscription.unsubscribe();
-    };
-  }, [supabase, refreshSession]);
+    return () => authListener?.subscription.unsubscribe();
+  }, [supabase]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    setSession(null);
-    setUser(null);
-    setProfile(null);
   };
-  
+
   const value = {
     supabase,
     session,

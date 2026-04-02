@@ -19,15 +19,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [user, isAdmin, loading, router]);
 
-  if (loading) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-gray-900 text-white font-bold text-2xl animate-pulse">
-        POD HOUSE...
-      </div>
-    );
-  }
-
-  if (!user || !isAdmin) return null;
+  // Redireciona quando carregamento finalizar sem permissão
+  // Middleware já protege a rota — aqui só prevenimos flash de conteúdo
+  if (!loading && (!user || !isAdmin)) return null;
 
   return (
     <ToastProvider>
