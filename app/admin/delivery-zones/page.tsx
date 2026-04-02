@@ -700,25 +700,9 @@ export default function DeliveryZonesPage() {
           <Loader2 className="animate-spin text-gray-400" size={32} />
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
-          {/* Mapa */}
-          <div className="lg:col-span-3 h-[560px] rounded-2xl overflow-hidden border border-gray-800 bg-gray-900 relative order-2 lg:order-1">
-            {drawMode && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[999] bg-gray-900 border border-gray-600 text-gray-200 text-xs font-bold px-4 py-2 rounded-full shadow-lg pointer-events-none">
-                Clique no mapa para adicionar pontos
-              </div>
-            )}
-            <ZoneMap
-              storeLat={storeLat} storeLng={storeLng} zones={mapZones}
-              selectedId={selectedId} onZoneClick={id => { const z = zones.find(x => x.id === id); if (z) startEdit(z); }}
-              drawMode={drawMode} drawPoints={drawPoints} onDrawPoint={handleDrawPoint}
-              previewPolygon={drawMode ? null : polygonDraft} previewColor={form.color}
-              fitBoundsPolygon={viewPolygon}
-            />
-          </div>
-
+        <div className="flex flex-col gap-6 w-full">
           {/* ── Tabela de zonas com busca e paginação ── */}
-          <div className="lg:col-span-2 flex flex-col order-1 lg:order-2">
+          <div className="w-full flex flex-col">
             {zones.length === 0 ? (
               <div className="text-center py-16 text-gray-500 bg-gray-900 rounded-2xl border border-gray-800">
                 <Truck size={40} className="mx-auto mb-3 opacity-20" />
@@ -926,6 +910,22 @@ export default function DeliveryZonesPage() {
 
               </div>
             )}
+          </div>
+
+          {/* Mapa */}
+          <div className="w-full h-[560px] rounded-2xl overflow-hidden border border-gray-800 bg-gray-900 relative">
+            {drawMode && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[999] bg-gray-900 border border-gray-600 text-gray-200 text-xs font-bold px-4 py-2 rounded-full shadow-lg pointer-events-none">
+                Clique no mapa para adicionar pontos
+              </div>
+            )}
+            <ZoneMap
+              storeLat={storeLat} storeLng={storeLng} zones={mapZones}
+              selectedId={selectedId} onZoneClick={id => { const z = zones.find(x => x.id === id); if (z) startEdit(z); }}
+              drawMode={drawMode} drawPoints={drawPoints} onDrawPoint={handleDrawPoint}
+              previewPolygon={drawMode ? null : polygonDraft} previewColor={form.color}
+              fitBoundsPolygon={viewPolygon}
+            />
           </div>
         </div>
       )}

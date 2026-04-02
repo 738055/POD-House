@@ -409,7 +409,7 @@ export default function NewProductPage() {
                             currentUrl={variantImage}
                             onUpload={(url) => setValue(`variants.${index}.image_url`, url)}
                             onRemove={() => setValue(`variants.${index}.image_url`, null)}
-                            label="Foto do Sabor"
+                            label="Foto do Sabor (1080×1080px)"
                             aspectRatio="square"
                           />
                         </div>
