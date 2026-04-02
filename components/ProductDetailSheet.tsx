@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { X, Plus, Minus, ChevronRight } from 'lucide-react';
+import { X, Plus, Minus, Package } from 'lucide-react';
 import type { Product, ProductVariant } from '@/lib/supabase/types';
 import { useCart } from '@/hooks/use-cart';
 
@@ -48,23 +48,31 @@ export default function ProductDetailSheet({ product, onClose }: Props) {
       variantName: selectedVariant.name,
       imageUrl:    selectedVariant.image_url ?? '',
       unitPrice:   price,
+      stock:       selectedVariant.stock,
     }, qty);
     setAdded(true);
     setTimeout(onClose, 600);
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end" style={{ maxWidth: '480px', left: 0, right: 0, margin: '0 auto' }}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative w-full bg-white rounded-t-2xl animate-slide-up overflow-hidden max-h-[92vh] flex flex-col">
+      <div className="relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl animate-slide-up overflow-hidden max-h-[94vh] flex flex-col">
 
         {/* Imagem */}
-        <div className="relative bg-gray-50 flex-shrink-0" style={{ aspectRatio: '1/1', maxHeight: '38vh' }}>
+        <div className="relative bg-gray-50 flex-shrink-0" style={{ height: '45vw', maxHeight: '280px', minHeight: '200px' }}>
           {imageUrl ? (
-            <Image src={imageUrl} alt={selectedVariant?.name ?? product.name} fill className="object-contain p-5" />
+            <Image
+              key={imageUrl}
+              src={imageUrl}
+              alt={selectedVariant?.name ?? product.name}
+              fill
+              className="object-contain p-3"
+              sizes="(max-width: 640px) 100vw, 512px"
+            />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-200">
-              <span className="text-6xl">📦</span>
+            <div className="w-full h-full flex items-center justify-center">
+              <Package size={64} className="text-gray-200" />
             </div>
           )}
           <button onClick={onClose}
@@ -92,7 +100,7 @@ export default function ProductDetailSheet({ product, onClose }: Props) {
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
                   Selecione o sabor ({variants.length} opções)
                 </p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   {variants.map(v => {
                     const isSelected = selectedVariant?.id === v.id;
                     const noStock    = v.stock <= 0;
@@ -101,30 +109,32 @@ export default function ProductDetailSheet({ product, onClose }: Props) {
                         key={v.id}
                         onClick={() => !noStock && setSelectedVariant(v)}
                         disabled={noStock}
-                        className={`flex items-center gap-2 p-2.5 rounded-xl border-2 text-left transition-all ${
+                        className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 text-center transition-all active:scale-95 ${
                           isSelected
-                            ? 'border-black bg-black text-white'
+                            ? 'border-black bg-black text-white shadow-md'
                             : noStock
-                            ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
-                            : 'border-gray-200 hover:border-gray-400'
+                            ? 'border-gray-100 bg-gray-50 opacity-40 cursor-not-allowed'
+                            : 'border-gray-200 hover:border-gray-400 hover:bg-gray-50'
                         }`}
                       >
-                        {v.image_url && (
-                          <div className={`w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 ${isSelected ? 'bg-white/10' : 'bg-gray-50'}`}>
-                            <Image src={v.image_url} alt={v.name} width={36} height={36} className="w-full h-full object-contain p-0.5" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className={`text-xs font-semibold leading-tight truncate ${isSelected ? 'text-white' : 'text-gray-800'}`}>
-                            {v.name}
-                          </p>
-                          {v.price_override && (
-                            <p className={`text-[11px] ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
-                              {fmt(v.price_override)}
-                            </p>
+                        <div className={`w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 ${isSelected ? 'bg-white/10' : 'bg-gray-100'}`}>
+                          {v.image_url ? (
+                            <Image src={v.image_url} alt={v.name} width={56} height={56} className="w-full h-full object-contain p-0.5" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Package size={20} className={isSelected ? 'text-white/50' : 'text-gray-300'} />
+                            </div>
                           )}
-                          {noStock && <p className="text-[10px] text-red-400">Esgotado</p>}
                         </div>
+                        <p className={`text-[11px] font-semibold leading-tight line-clamp-2 w-full ${isSelected ? 'text-white' : 'text-gray-800'}`}>
+                          {v.name}
+                        </p>
+                        {v.price_override && (
+                          <p className={`text-[10px] font-bold ${isSelected ? 'text-white/80' : 'text-[#0EAD69]'}`}>
+                            {fmt(v.price_override)}
+                          </p>
+                        )}
+                        {noStock && <p className="text-[9px] text-red-400 font-semibold">Esgotado</p>}
                       </button>
                     );
                   })}
@@ -144,8 +154,11 @@ export default function ProductDetailSheet({ product, onClose }: Props) {
                 <Minus size={14} />
               </button>
               <span className="text-lg font-bold w-6 text-center">{qty}</span>
-              <button onClick={() => setQty(q => q + 1)}
-                className="w-9 h-9 rounded-full bg-black text-white flex items-center justify-center">
+              <button
+                onClick={() => setQty(q => Math.min(q + 1, selectedVariant?.stock ?? 1))}
+                disabled={!selectedVariant || qty >= (selectedVariant?.stock ?? 0)}
+                className="w-9 h-9 rounded-full bg-black text-white flex items-center justify-center disabled:bg-gray-300"
+              >
                 <Plus size={14} />
               </button>
             </div>
