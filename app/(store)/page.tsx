@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import {
   MapPin,
@@ -127,7 +127,7 @@ function formatPhone(v: string): string {
 }
 
 // ── Product card ─────────────────────────────────────────────────────────────
-function ProductCard({ product, onOpen }: { product: Product; onOpen: (product: Product) => void }) {
+const ProductCard = React.memo(function ProductCard({ product, onOpen }: { product: Product; onOpen: (product: Product) => void }) {
   const activeVariants = product.product_variants.filter(v => v.active);
   const available = activeVariants.filter(v => v.stock > 0);
   const isOutOfStock = available.length === 0;
@@ -181,7 +181,7 @@ function ProductCard({ product, onOpen }: { product: Product; onOpen: (product: 
       </div>
     </div>
   );
-}
+});
 
 // ── Cart modal ────────────────────────────────────────────────────────────────
 function CartModal({
@@ -607,21 +607,21 @@ export default function HomePage() {
     fetchData();
   }, [supabase]);
 
-  const filteredProducts = allProducts.filter(product => {
+  const filteredProducts = useMemo(() => allProducts.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = !selectedCategory || product.category_id === selectedCategory;
     return matchesSearch && matchesCategory;
-  });
+  }), [allProducts, searchQuery, selectedCategory]);
 
-  const featuredProducts = allProducts.filter(p => p.is_featured);
+  const featuredProducts = useMemo(() => allProducts.filter(p => p.is_featured), [allProducts]);
 
   const selectedCategoryName = selectedCategory
     ? categories.find(c => c.id === selectedCategory)?.name || 'Categoria'
     : 'Lista de categorias';
 
-  function handleOpenProduct(product: Product) {
+  const handleOpenProduct = useCallback((product: Product) => {
     setSelectedProduct(product);
-  }
+  }, []);
 
   const renderInicio = () => (
     <div className="pb-20 lg:pb-8">
@@ -640,7 +640,7 @@ export default function HomePage() {
       {/* ── Store header — mobile only ──────────────────────────────────── */}
       <div className="lg:hidden">
         <div className="relative w-full" style={{ aspectRatio: '1280/466' }}>
-          <Image src={storeSettings?.cover_url || '/banner.png'} alt="Banner" fill className="object-cover" priority />
+          <Image src={storeSettings?.cover_url || '/banner.png'} alt="Banner" fill sizes="100vw" className="object-cover" priority />
         </div>
         <div className="mx-3 -mt-5 bg-white rounded-2xl border border-gray-100 shadow-sm relative z-[1]">
           <div className="absolute -top-9 left-1/2 -translate-x-1/2 z-10">
@@ -715,7 +715,7 @@ export default function HomePage() {
       {/* ── Desktop: store section (banner + info) ───────────────────────── */}
       <div className="hidden lg:block -mx-8">
         <div className="relative w-full" style={{ aspectRatio: '1280/380' }}>
-          <Image src={storeSettings?.cover_url || '/banner.png'} alt="Banner" fill className="object-cover" priority />
+          <Image src={storeSettings?.cover_url || '/banner.png'} alt="Banner" fill sizes="100vw" className="object-cover" priority />
         </div>
         <div className="bg-white border-b border-gray-200">
           <div className="px-8 py-4 flex items-end gap-4">

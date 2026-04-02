@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { CartItem } from '@/lib/supabase/types';
 import { useAuth } from './use-auth';
@@ -157,8 +157,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (user) await supabase.from('cart_items').delete().eq('user_id', user.id);
   }
 
-  const totalItems = items.reduce((s, i) => s + i.quantity, 0);
-  const totalPrice = items.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
+  const totalItems = useMemo(() => items.reduce((s, i) => s + i.quantity, 0), [items]);
+  const totalPrice = useMemo(() => items.reduce((s, i) => s + i.unitPrice * i.quantity, 0), [items]);
 
   return (
     <CartContext.Provider value={{ items, addItem, removeItem, updateQty, clearCart, totalItems, totalPrice }}>

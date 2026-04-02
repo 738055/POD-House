@@ -14,7 +14,8 @@
       "WebFetch(domain:podhousedelivery.com.br)",
       "Bash(wc:*)",
       "Bash(node_modules/.bin/tsc:*)",
-      "Bash(cmd:*)"
+      "Bash(cmd:*)",
+      "Bash(xargs cat:*)"
     ]
   }
 }

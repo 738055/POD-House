@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
-import { motion } from 'motion/react';
 import { ShoppingCart, Eye, Gift } from 'lucide-react';
 
 interface Variation {
@@ -24,7 +23,7 @@ interface Product {
   };
 }
 
-export default function ProductCard({ product, onAddToCart }: { product: Product, onAddToCart: (product: Product, variation: Variation) => void }) {
+const ProductCard = React.memo(function ProductCard({ product, onAddToCart }: { product: Product, onAddToCart: (product: Product, variation: Variation) => void }) {
   const [selectedVariation, setSelectedVariation] = useState(product.variations[0]);
 
   const hasPromo = !!product.promo;
@@ -40,16 +39,13 @@ export default function ProductCard({ product, onAddToCart }: { product: Product
   }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="card-premium group flex flex-col h-full"
-    >
+    <div className="card-premium group flex flex-col h-full animate-fade-in">
       <div className="relative aspect-square overflow-hidden bg-surface-hover">
         <Image
           src={selectedVariation.imageUrl || 'https://picsum.photos/seed/pod/400/400'}
           alt={product.name}
           fill
+          sizes="(max-width: 480px) 50vw, 200px"
           className="object-cover transition-transform duration-500 group-hover:scale-110"
           referrerPolicy="no-referrer"
         />
@@ -107,6 +103,8 @@ export default function ProductCard({ product, onAddToCart }: { product: Product
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
-}
+});
+
+export default ProductCard;
