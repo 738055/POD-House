@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { ImageUpload } from '../components/ImageUpload';
-import { Settings, Loader2, CheckCircle, AlertCircle, MapPin, Search } from 'lucide-react';
+import { Settings, Loader2, CheckCircle, AlertCircle, MapPin, Search, Navigation } from 'lucide-react';
 
 type StoreSettings = {
   store_name: string;
@@ -39,6 +39,13 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
+
+  // Campos de endereço da loja (locais, compõem store_address)
+  const [cep, setCep] = useState('');
+  const [cepParts, setCepParts] = useState({ logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '' });
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepFetched, setCepFetched] = useState(false);
+  const [cepError, setCepError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -104,6 +111,63 @@ export default function SettingsPage() {
     } catch {
       setGeocodeError('Erro ao buscar coordenadas. Verifique sua conexão.');
     } finally {
+      setGeocoding(false);
+    }
+  }
+
+  function composeAddress(parts: typeof cepParts, rawCep: string) {
+    return [
+      parts.logradouro,
+      parts.numero ? `nº ${parts.numero}` : '',
+      parts.complemento,
+      parts.bairro,
+      parts.cidade && parts.uf ? `${parts.cidade} - ${parts.uf}` : parts.cidade || parts.uf,
+      rawCep ? rawCep.replace(/(\d{5})(\d{3})/, '$1-$2') : '',
+    ].filter(Boolean).join(', ');
+  }
+
+  async function lookupCep(rawCep: string) {
+    const clean = rawCep.replace(/\D/g, '');
+    if (clean.length !== 8) return;
+    setCepLoading(true);
+    setCepError(null);
+    setCepFetched(false);
+    try {
+      // 1. ViaCEP — endereço
+      const viaRes = await fetch(`https://viacep.com.br/ws/${clean}/json/`);
+      const viaData = await viaRes.json();
+      if (viaData.erro) { setCepError('CEP não encontrado. Verifique e tente novamente.'); return; }
+
+      const newParts = {
+        ...cepParts,
+        logradouro: viaData.logradouro || '',
+        bairro: viaData.bairro || '',
+        cidade: viaData.localidade || '',
+        uf: viaData.uf || '',
+      };
+      setCepParts(newParts);
+      setCepFetched(true);
+
+      const composed = composeAddress(newParts, clean);
+      setSettings(s => ({ ...s, store_address: composed, store_lat: null, store_lng: null }));
+
+      // 2. Nominatim — geocoding pelo CEP (mais preciso que endereço)
+      setGeocoding(true);
+      setGeocodeError(null);
+      const geoRes = await fetch(
+        `https://nominatim.openstreetmap.org/search?postalcode=${clean}&countrycodes=br&format=json&limit=1`,
+        { headers: { 'Accept-Language': 'pt-BR', 'User-Agent': 'POD-House/1.0' } }
+      );
+      const geoData = await geoRes.json();
+      if (Array.isArray(geoData) && geoData.length > 0) {
+        setSettings(s => ({ ...s, store_lat: parseFloat(geoData[0].lat), store_lng: parseFloat(geoData[0].lon) }));
+      } else {
+        setGeocodeError('CEP encontrado, mas coordenadas não localizadas. Tente geocodificar manualmente.');
+      }
+    } catch {
+      setCepError('Erro de conexão ao buscar o CEP.');
+    } finally {
+      setCepLoading(false);
       setGeocoding(false);
     }
   }
@@ -291,49 +355,187 @@ export default function SettingsPage() {
       </div>
 
       {/* Localização da Loja */}
-      <div className="p-6 bg-gray-900 border border-gray-800 rounded-xl space-y-4">
-        <div className="flex items-center gap-2">
-          <MapPin className="text-purple-400" size={20} />
-          <h2 className="text-lg font-bold text-white">Localização da Loja</h2>
+      <div className="p-6 bg-gray-900 border border-gray-800 rounded-xl space-y-5">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <MapPin className="text-purple-400" size={20} />
+            <h2 className="text-lg font-bold text-white">Localização da Loja</h2>
+          </div>
+          <p className="text-sm text-gray-500">
+            Ponto de origem para cálculo de distância e frete. Informe o CEP para preenchimento automático.
+          </p>
         </div>
-        <p className="text-sm text-gray-500">
-          Endereço completo da loja. Usado como ponto de origem nas zonas de entrega.
-        </p>
-        <div className="space-y-3">
-          <div className="flex gap-2">
+
+        {/* CEP — busca automática */}
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1.5">CEP</label>
+          <div className="flex gap-2 max-w-xs">
             <input
-              value={settings.store_address}
+              value={cep}
               onChange={e => {
-                setSettings(s => ({ ...s, store_address: e.target.value, store_lat: null, store_lng: null }));
-                setGeocodeError(null);
+                const v = e.target.value.replace(/\D/g, '').slice(0, 8);
+                setCep(v);
+                setCepFetched(false);
+                setCepError(null);
+                if (v.length === 8) lookupCep(v);
               }}
-              placeholder="Rua das Flores, 123, Centro, Londrina - PR"
-              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder="00000-000"
+              maxLength={9}
+              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
             <button
               type="button"
-              onClick={geocodeAddress}
-              disabled={geocoding || !settings.store_address.trim()}
-              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap"
+              onClick={() => lookupCep(cep)}
+              disabled={cepLoading || cep.replace(/\D/g, '').length !== 8}
+              className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap"
             >
-              {geocoding ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />}
-              {geocoding ? 'Buscando...' : 'Geocodificar'}
+              {cepLoading ? <Loader2 className="animate-spin" size={15} /> : <Search size={15} />}
+              {cepLoading ? 'Buscando...' : 'Buscar'}
             </button>
+          </div>
+          {cepError && (
+            <p className="mt-1.5 text-xs text-red-400 flex items-center gap-1"><AlertCircle size={12} />{cepError}</p>
+          )}
+          {cepFetched && !cepError && (
+            <p className="mt-1.5 text-xs text-green-400 flex items-center gap-1"><CheckCircle size={12} />Endereço encontrado</p>
+          )}
+        </div>
+
+        {/* Campos de endereço */}
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+          <div className="md:col-span-4">
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">Logradouro</label>
+            <input
+              value={cepParts.logradouro}
+              onChange={e => {
+                const v = { ...cepParts, logradouro: e.target.value };
+                setCepParts(v);
+                setSettings(s => ({ ...s, store_address: composeAddress(v, cep), store_lat: null, store_lng: null }));
+              }}
+              placeholder="Rua das Flores"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+          <div className="md:col-span-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">Número</label>
+            <input
+              value={cepParts.numero}
+              onChange={e => {
+                const v = { ...cepParts, numero: e.target.value };
+                setCepParts(v);
+                setSettings(s => ({ ...s, store_address: composeAddress(v, cep), store_lat: null, store_lng: null }));
+              }}
+              placeholder="123"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+          <div className="md:col-span-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">Complemento</label>
+            <input
+              value={cepParts.complemento}
+              onChange={e => {
+                const v = { ...cepParts, complemento: e.target.value };
+                setCepParts(v);
+                setSettings(s => ({ ...s, store_address: composeAddress(v, cep), store_lat: null, store_lng: null }));
+              }}
+              placeholder="Sala 1"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+          <div className="md:col-span-3">
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">Bairro</label>
+            <input
+              value={cepParts.bairro}
+              onChange={e => {
+                const v = { ...cepParts, bairro: e.target.value };
+                setCepParts(v);
+                setSettings(s => ({ ...s, store_address: composeAddress(v, cep), store_lat: null, store_lng: null }));
+              }}
+              placeholder="Centro"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">Cidade</label>
+            <input
+              value={cepParts.cidade}
+              onChange={e => {
+                const v = { ...cepParts, cidade: e.target.value };
+                setCepParts(v);
+                setSettings(s => ({ ...s, store_address: composeAddress(v, cep), store_lat: null, store_lng: null }));
+              }}
+              placeholder="Londrina"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+          <div className="md:col-span-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">UF</label>
+            <input
+              value={cepParts.uf}
+              onChange={e => {
+                const v = { ...cepParts, uf: e.target.value.toUpperCase().slice(0, 2) };
+                setCepParts(v);
+                setSettings(s => ({ ...s, store_address: composeAddress(v, cep), store_lat: null, store_lng: null }));
+              }}
+              placeholder="PR"
+              maxLength={2}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white uppercase font-mono focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+        </div>
+
+        {/* Endereço completo composto + status geocoding */}
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              Endereço completo
+              <span className="ml-2 text-[10px] text-gray-600 font-normal normal-case">composto automaticamente · editável</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                value={settings.store_address}
+                onChange={e => setSettings(s => ({ ...s, store_address: e.target.value, store_lat: null, store_lng: null }))}
+                placeholder="Preencha o CEP acima ou edite manualmente"
+                className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <button
+                type="button"
+                onClick={geocodeAddress}
+                disabled={geocoding || !settings.store_address.trim()}
+                title="Geocodificar manualmente"
+                className="flex items-center gap-1.5 border border-gray-700 hover:bg-gray-800 disabled:opacity-40 text-gray-300 font-semibold px-3 py-2.5 rounded-lg transition-colors whitespace-nowrap text-sm"
+              >
+                {geocoding ? <Loader2 className="animate-spin" size={14} /> : <Navigation size={14} />}
+                {geocoding ? 'Geocodificando...' : 'Geocodificar'}
+              </button>
+            </div>
           </div>
 
           {geocodeError && (
-            <p className="text-sm text-red-400 flex items-center gap-1.5">
-              <AlertCircle size={14} />
-              {geocodeError}
-            </p>
+            <div className="flex items-center gap-2 text-sm text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2.5">
+              <AlertCircle size={14} className="flex-shrink-0" />
+              <span>{geocodeError}</span>
+            </div>
           )}
 
-          {settings.store_lat !== null && settings.store_lng !== null && (
-            <div className="flex items-center gap-2 text-sm text-green-400 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
-              <CheckCircle size={14} />
-              <span>
-                Coordenadas: <strong>{settings.store_lat.toFixed(6)}</strong>, <strong>{settings.store_lng.toFixed(6)}</strong>
-              </span>
+          {/* Status das coordenadas */}
+          {settings.store_lat !== null && settings.store_lng !== null ? (
+            <div className="flex items-center justify-between bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-3">
+              <div className="flex items-center gap-2 text-green-400">
+                <CheckCircle size={16} className="flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-bold">Coordenadas definidas</p>
+                  <p className="text-xs font-mono text-green-500/80 mt-0.5">
+                    Lat: {settings.store_lat.toFixed(6)} · Lng: {settings.store_lng.toFixed(6)}
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] text-green-600 bg-green-500/10 px-2 py-1 rounded-full font-bold uppercase">Pronto para entrega</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-800/50 border border-gray-700/50 rounded-lg px-4 py-3">
+              <MapPin size={15} className="flex-shrink-0 text-gray-600" />
+              <span>Coordenadas não definidas — informe o CEP ou geocodifique o endereço acima.</span>
             </div>
           )}
         </div>

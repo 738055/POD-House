@@ -49,6 +49,7 @@ interface ZoneMapProps {
   onDrawPoint: (point: [number, number]) => void;
   previewPolygon: [number, number][] | null;
   previewColor: string;
+  fitBoundsPolygon?: [number, number][] | null;
 }
 
 const DEFAULT_CENTER: [number, number] = [-23.5505, -46.6333];
@@ -79,6 +80,20 @@ function CursorController({ drawMode }: { drawMode: boolean }) {
   return null;
 }
 
+/** Centraliza/zoom em qualquer polígono passado (sem desenhar nada) */
+function FitBounds({ polygon }: { polygon: [number, number][] | null | undefined }) {
+  const map = useMap();
+  const prev = useRef<[number, number][] | null | undefined>(null);
+  useEffect(() => {
+    if (polygon && polygon !== prev.current && polygon.length >= 3) {
+      const bounds = L.latLngBounds(polygon.map(([lat, lng]) => [lat, lng] as L.LatLngTuple));
+      map.fitBounds(bounds, { padding: [60, 60] });
+    }
+    prev.current = polygon;
+  }, [polygon, map]);
+  return null;
+}
+
 /** Centraliza/zoom no polígono de preview quando ele muda */
 function FitPreview({ polygon }: { polygon: [number, number][] | null }) {
   const map = useMap();
@@ -104,6 +119,7 @@ export default function ZoneMap({
   onDrawPoint,
   previewPolygon,
   previewColor,
+  fitBoundsPolygon,
 }: ZoneMapProps) {
   const center: [number, number] =
     storeLat && storeLng ? [storeLat, storeLng] : DEFAULT_CENTER;
@@ -123,6 +139,7 @@ export default function ZoneMap({
       <DrawHandler drawMode={drawMode} onDrawPoint={onDrawPoint} />
       <CursorController drawMode={drawMode} />
       <FitPreview polygon={previewPolygon} />
+      <FitBounds polygon={fitBoundsPolygon} />
 
       {/* Marcador da loja */}
       {storeLat && storeLng && (

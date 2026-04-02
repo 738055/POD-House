@@ -11,7 +11,7 @@ import {
   Truck, Plus, Pencil, Trash2, Check, X, Loader2,
   Navigation, Clock, DollarSign, Layers, Search,
   PenLine, Undo2, CheckCircle2, MapPin, Building2,
-  ChevronDown, ChevronUp, CheckSquare, Square,
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, CheckSquare, Square,
 } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
 
@@ -102,6 +102,14 @@ export default function DeliveryZonesPage() {
   // Inline edit de tarifas
   const [inlineEdit, setInlineEdit] = useState<InlineEdit | null>(null);
   const [savingInline, setSavingInline] = useState(false);
+
+  // Tabela: busca + paginação
+  const [searchZone, setSearchZone] = useState('');
+  const [pageSize, setPageSize] = useState<10 | 20 | 30>(10);
+  const [zonePage, setZonePage] = useState(0);
+
+  // Centralizar mapa na zona selecionada
+  const [viewPolygon, setViewPolygon] = useState<[number, number][] | null>(null);
 
   // Painel de edição de polígono (secundário)
   const [editId, setEditId] = useState<string | 'new' | null>(null);
@@ -367,6 +375,12 @@ export default function DeliveryZonesPage() {
 
   const allSelected = cityNeighborhoods.length > 0 && selected.size === cityNeighborhoods.length;
   const existingNames = new Set(zones.map(z => z.name.toLowerCase()));
+
+  const filteredZones = zones.filter(z =>
+    z.name.toLowerCase().includes(searchZone.toLowerCase()),
+  );
+  const totalZonePages = Math.max(1, Math.ceil(filteredZones.length / pageSize));
+  const pagedZones = filteredZones.slice(zonePage * pageSize, (zonePage + 1) * pageSize);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -691,10 +705,11 @@ export default function DeliveryZonesPage() {
               selectedId={selectedId} onZoneClick={id => { const z = zones.find(x => x.id === id); if (z) startEdit(z); }}
               drawMode={drawMode} drawPoints={drawPoints} onDrawPoint={handleDrawPoint}
               previewPolygon={drawMode ? null : polygonDraft} previewColor={form.color}
+              fitBoundsPolygon={viewPolygon}
             />
           </div>
 
-          {/* ── Tabela de zonas compacta ── */}
+          {/* ── Tabela de zonas com busca e paginação ── */}
           <div className="lg:col-span-2 flex flex-col">
             {zones.length === 0 ? (
               <div className="text-center py-16 text-gray-500 bg-gray-900 rounded-2xl border border-gray-800">
@@ -703,43 +718,72 @@ export default function DeliveryZonesPage() {
                 <p className="text-sm mt-1">Busque uma cidade acima para importar</p>
               </div>
             ) : (
-              <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden flex flex-col" style={{ maxHeight: '540px' }}>
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden flex flex-col">
 
-                {/* Cabeçalho fixo */}
-                <div className="flex items-center px-3 py-2 border-b border-gray-800 bg-gray-900/95 sticky top-0 flex-shrink-0">
+                {/* Busca + seletor de itens por página */}
+                <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-800 bg-gray-900/95">
+                  <div className="relative flex-1">
+                    <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                    <input
+                      value={searchZone}
+                      onChange={e => { setSearchZone(e.target.value); setZonePage(0); }}
+                      placeholder="Buscar bairro..."
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-8 pr-3 py-1.5 text-white text-xs focus:outline-none focus:border-gray-500"
+                    />
+                  </div>
+                  <select
+                    value={pageSize}
+                    onChange={e => { setPageSize(Number(e.target.value) as 10 | 20 | 30); setZonePage(0); }}
+                    className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-lg px-2 py-1.5 focus:outline-none cursor-pointer"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={30}>30</option>
+                  </select>
+                </div>
+
+                {/* Cabeçalho */}
+                <div className="flex items-center px-3 py-2 border-b border-gray-800 bg-gray-900/95">
                   <span className="w-5 flex-shrink-0" />
-                  <span className="flex-1 min-w-0 text-[10px] font-bold text-gray-500 uppercase tracking-wide">Zona</span>
+                  <span className="flex-1 min-w-0 text-[10px] font-bold text-gray-500 uppercase tracking-wide">Zona / Bairro</span>
                   <span className="w-20 flex-shrink-0 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wide">Frete</span>
-                  <span className="w-18 flex-shrink-0 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wide">Tempo</span>
+                  <span className="w-16 flex-shrink-0 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wide">Tempo</span>
                   <span className="w-14 flex-shrink-0 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wide">Status</span>
                   <span className="w-14 flex-shrink-0" />
                 </div>
 
-                {/* Linhas com scroll */}
-                <div className="overflow-y-auto flex-1" style={{ scrollbarWidth: 'thin' }}>
-                  {zones.map(zone => (
+                {/* Linhas paginadas */}
+                {pagedZones.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-gray-600 text-xs">
+                    Nenhuma zona encontrada para &quot;{searchZone}&quot;
+                  </div>
+                ) : (
+                  pagedZones.map(zone => (
                     <div
                       key={zone.id}
-                      className={`flex items-center px-3 py-2 border-b border-gray-800/50 last:border-0 transition-colors ${
+                      className={`flex items-start px-3 py-2.5 border-b border-gray-800/50 last:border-0 transition-colors ${
                         selectedId === zone.id ? 'bg-gray-800/70' : 'hover:bg-gray-800/30'
                       }`}
                     >
                       {/* Cor */}
-                      <div className="w-5 flex-shrink-0 flex items-center">
+                      <div className="w-5 flex-shrink-0 flex items-center pt-0.5">
                         <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: zone.color }} />
                       </div>
 
-                      {/* Nome */}
+                      {/* Nome completo */}
                       <p
-                        className="flex-1 min-w-0 text-white text-xs font-semibold truncate pr-2 cursor-pointer hover:text-gray-300 transition-colors"
-                        title={zone.name}
-                        onClick={() => setSelectedId(selectedId === zone.id ? null : zone.id)}
+                        className="flex-1 min-w-0 text-white text-xs font-semibold break-words pr-2 cursor-pointer hover:text-gray-300 transition-colors leading-snug"
+                        onClick={() => {
+                          const next = selectedId === zone.id ? null : zone.id;
+                          setSelectedId(next);
+                          setViewPolygon(next ? (zone.polygon ?? null) : null);
+                        }}
                       >
                         {zone.name}
                       </p>
 
                       {/* Frete — inline editável */}
-                      <div className="w-20 flex-shrink-0 flex justify-center">
+                      <div className="w-20 flex-shrink-0 flex justify-center pt-0.5">
                         {inlineEdit?.zoneId === zone.id && inlineEdit.field === 'delivery_fee' ? (
                           <div className="flex items-center gap-0.5">
                             <span className="text-gray-500 text-[10px]">R$</span>
@@ -766,7 +810,7 @@ export default function DeliveryZonesPage() {
                       </div>
 
                       {/* Tempo — inline editável */}
-                      <div className="w-18 flex-shrink-0 flex justify-center">
+                      <div className="w-16 flex-shrink-0 flex justify-center pt-0.5">
                         {inlineEdit?.zoneId === zone.id && inlineEdit.field === 'estimated_minutes' ? (
                           <div className="flex items-center gap-0.5">
                             <input
@@ -793,7 +837,7 @@ export default function DeliveryZonesPage() {
                       </div>
 
                       {/* Status */}
-                      <div className="w-14 flex-shrink-0 flex justify-center">
+                      <div className="w-14 flex-shrink-0 flex justify-center pt-0.5">
                         <button
                           onClick={() => toggleActive(zone)}
                           className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wide transition-colors ${
@@ -807,7 +851,7 @@ export default function DeliveryZonesPage() {
                       </div>
 
                       {/* Ações */}
-                      <div className="w-14 flex-shrink-0 flex justify-end gap-0.5">
+                      <div className="w-14 flex-shrink-0 flex justify-end gap-0.5 pt-0.5">
                         <button onClick={() => startEdit(zone)} title="Editar mapa"
                           className="p-1 text-gray-600 hover:text-white hover:bg-gray-700 rounded transition-all">
                           <Pencil size={11} />
@@ -818,18 +862,33 @@ export default function DeliveryZonesPage() {
                         </button>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  ))
+                )}
 
-                {/* Rodapé com totais */}
-                <div className="border-t border-gray-800 px-3 py-2 flex items-center justify-between flex-shrink-0">
-                  <span className="text-[10px] text-gray-600">
-                    {zones.length} zona{zones.length !== 1 ? 's' : ''} · {zones.filter(z => z.active).length} ativa{zones.filter(z => z.active).length !== 1 ? 's' : ''}
+                {/* Rodapé: totais + paginação */}
+                <div className="border-t border-gray-800 px-3 py-2 flex items-center justify-between flex-shrink-0 gap-2">
+                  <span className="text-[10px] text-gray-600 whitespace-nowrap">
+                    {filteredZones.length} zona{filteredZones.length !== 1 ? 's' : ''} · {zones.filter(z => z.active).length} ativa{zones.filter(z => z.active).length !== 1 ? 's' : ''}
                   </span>
-                  <button onClick={() => startEdit()}
-                    className="text-[10px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 transition-colors">
-                    <Plus size={10} /> Nova zona
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setZonePage(p => Math.max(0, p - 1))}
+                      disabled={zonePage === 0}
+                      className="flex items-center gap-0.5 text-[10px] text-gray-400 hover:text-white disabled:opacity-30 px-1.5 py-1 rounded hover:bg-gray-800 transition-colors"
+                    >
+                      <ChevronLeft size={11} /> Anterior
+                    </button>
+                    <span className="text-[10px] text-gray-600 px-1">
+                      {zonePage + 1}/{totalZonePages}
+                    </span>
+                    <button
+                      onClick={() => setZonePage(p => Math.min(totalZonePages - 1, p + 1))}
+                      disabled={zonePage >= totalZonePages - 1}
+                      className="flex items-center gap-0.5 text-[10px] text-gray-400 hover:text-white disabled:opacity-30 px-1.5 py-1 rounded hover:bg-gray-800 transition-colors"
+                    >
+                      Próximo <ChevronRight size={11} />
+                    </button>
+                  </div>
                 </div>
 
               </div>
