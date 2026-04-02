@@ -1,12 +1,12 @@
 import type {Metadata} from 'next';
 import './globals.css';
-import { Inter } from 'next/font/google';
+import { Rubik } from 'next/font/google';
 import { AuthProvider } from '@/hooks/use-auth';
 import { CartProvider } from '@/hooks/use-cart';
 
-const inter = Inter({
+const rubik = Rubik({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-sans',
 });
 
 export const metadata: Metadata = {
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} antialiased`}>
+    <html lang="pt-BR" className={`${rubik.variable} antialiased`}>
       <body suppressHydrationWarning className="bg-white">
         <AuthProvider>
           <CartProvider>

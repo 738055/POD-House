@@ -119,7 +119,7 @@ function VariantPickerSheet({
               <button
                 key={v.id}
                 onClick={() => onSelect(v)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-purple-400 hover:bg-purple-50 transition-all text-left active:scale-95"
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all text-left active:scale-95"
               >
                 <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
                   <Image src={v.image_url || '/logo.png'} alt={v.name} width={48} height={48} className="w-full h-full object-contain p-1" />
@@ -132,7 +132,7 @@ function VariantPickerSheet({
                     {v.stock <= 5 ? `Últimas ${v.stock} un.` : `${v.stock} disponíveis`}
                   </span>
                 </div>
-                <p className="text-sm font-bold text-purple-600 flex-shrink-0">{formatCurrency(price)}</p>
+                <p className="text-sm font-bold text-[#0EAD69] flex-shrink-0">{formatCurrency(price)}</p>
               </button>
             );
           })}
@@ -186,11 +186,11 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (product: Pr
           <div className="flex items-center justify-between">
             <div>
               {hasMultiple && <p className="text-[10px] text-gray-400">a partir de</p>}
-              <p className="text-base font-bold text-purple-600">{formatCurrency(minPrice)}</p>
+              <p className="text-base font-bold text-[#0EAD69]">{formatCurrency(minPrice)}</p>
             </div>
             <button
               onClick={handleAddClick}
-              className="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center hover:bg-purple-700 transition-colors active:scale-95"
+              className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center hover:bg-gray-800 transition-colors active:scale-95"
             >
               <Plus size={16} />
             </button>
@@ -242,12 +242,12 @@ function CartModal({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 line-clamp-2 leading-tight">{item.productName} <span className="text-gray-500 font-normal">{item.variantName}</span></p>
-                <p className="text-purple-600 font-bold text-sm mt-1">{formatCurrency(item.unitPrice)}</p>
+                <p className="text-[#0EAD69] font-bold text-sm mt-1">{formatCurrency(item.unitPrice)}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button onClick={() => onUpdateQuantity(item.variantId, item.quantity - 1)} className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100"><Minus size={12} /></button>
                 <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
-                <button onClick={() => onUpdateQuantity(item.variantId, item.quantity + 1)} className="w-7 h-7 rounded-full bg-purple-600 text-white flex items-center justify-center hover:bg-purple-700"><Plus size={12} /></button>
+                <button onClick={() => onUpdateQuantity(item.variantId, item.quantity + 1)} className="w-7 h-7 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800"><Plus size={12} /></button>
               </div>
             </div>
           ))}
@@ -258,7 +258,7 @@ function CartModal({
               <span className="text-gray-600 font-medium">Total</span>
               <span className="text-xl font-bold text-gray-900">{formatCurrency(total)}</span>
             </div>
-            <button onClick={onCheckout} className="w-full bg-purple-600 text-white font-bold py-4 rounded-xl hover:bg-purple-700 transition-colors active:scale-95">
+            <button onClick={onCheckout} className="w-full bg-black text-white font-bold py-4 rounded-xl hover:bg-gray-800 transition-colors active:scale-95">
               Finalizar Pedido
             </button>
           </div>
@@ -370,7 +370,7 @@ function DeliveryModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                 }}
                 placeholder="00000-000"
                 maxLength={9}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-lg font-medium focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 pr-10"
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-lg font-medium focus:outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-100 pr-10"
               />
               {loading && <Loader2 size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
             </div>
@@ -379,7 +379,7 @@ function DeliveryModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
           <button
             onClick={handleCalculate}
             disabled={loading || cep.replace(/\D/g, '').length !== 8}
-            className="w-full bg-purple-600 text-white font-bold py-3 rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full bg-black text-white font-bold py-3 rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading ? <><Loader2 size={16} className="animate-spin" /> Calculando...</> : 'Calcular'}
           </button>
@@ -402,10 +402,10 @@ function DeliveryModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
           {/* Resultado real */}
           {result && (
-            <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 space-y-3">
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Truck size={20} className="text-purple-600" />
+                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Truck size={20} className="text-[#0EAD69]" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Zona de entrega</p>
@@ -413,13 +413,13 @@ function DeliveryModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white rounded-xl p-3 border border-purple-100 text-center">
+                <div className="bg-white rounded-xl p-3 border border-gray-100 text-center">
                   <p className="text-xs text-gray-500 mb-1">Taxa de entrega</p>
-                  <p className="font-black text-purple-700 text-lg">
+                  <p className="font-black text-[#0EAD69] text-lg">
                     {result.delivery_fee === 0 ? '🎉 Grátis' : formatCurrency(result.delivery_fee)}
                   </p>
                 </div>
-                <div className="bg-white rounded-xl p-3 border border-purple-100 text-center">
+                <div className="bg-white rounded-xl p-3 border border-gray-100 text-center">
                   <p className="text-xs text-gray-500 mb-1">Tempo estimado</p>
                   <p className="font-black text-gray-900 text-lg">~{result.estimated_minutes} min</p>
                 </div>
@@ -473,8 +473,8 @@ function StoreInfoModal({ isOpen, onClose, settings }: {
             <p className="text-gray-400 text-sm text-center py-4">Nenhuma informação configurada ainda.</p>
           ) : items.map(item => (
             <div key={item.title} className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <item.icon size={20} className="text-purple-600" />
+              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <item.icon size={20} className="text-[#0EAD69]" />
               </div>
               <div>
                 <p className="font-semibold text-gray-900">{item.title}</p>
@@ -502,7 +502,7 @@ function PromoModal({ promo, onClose }: { promo: Promotion | null; onClose: () =
         <div className="p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-3">{promo.title}</h2>
           <p className="text-gray-600 leading-relaxed">{promo.description}</p>
-          <button onClick={onClose} className="w-full mt-6 bg-purple-600 text-white font-bold py-3 rounded-xl hover:bg-purple-700 transition-colors">Entendi!</button>
+          <button onClick={onClose} className="w-full mt-6 bg-black text-white font-bold py-3 rounded-xl hover:bg-gray-800 transition-colors">Entendi!</button>
         </div>
       </div>
     </div>
@@ -523,17 +523,17 @@ function CategoryDropdown({ isOpen, onClose, selectedCategory, onSelect, categor
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"><X size={20} /></button>
         </div>
         <div className="overflow-y-auto">
-          <button onClick={() => { onSelect(null); onClose(); }} className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${!selectedCategory ? 'bg-purple-50' : ''}`}>
-            <span className={`text-sm font-medium ${!selectedCategory ? 'text-purple-600' : 'text-gray-700'}`}>Todas as categorias</span>
-            {!selectedCategory && <Check size={16} className="text-purple-600 ml-auto" />}
+          <button onClick={() => { onSelect(null); onClose(); }} className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${!selectedCategory ? 'bg-gray-50' : ''}`}>
+            <span className={`text-sm font-medium ${!selectedCategory ? 'text-[#0EAD69]' : 'text-gray-700'}`}>Todas as categorias</span>
+            {!selectedCategory && <Check size={16} className="text-[#0EAD69] ml-auto" />}
           </button>
           {categories.map(cat => (
-            <button key={cat.id} onClick={() => { onSelect(cat.id); onClose(); }} className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${selectedCategory === cat.id ? 'bg-purple-50' : ''}`}>
+            <button key={cat.id} onClick={() => { onSelect(cat.id); onClose(); }} className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${selectedCategory === cat.id ? 'bg-gray-50' : ''}`}>
               <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
                 <Image src={cat.image_url || '/logo.png'} alt={cat.name} width={40} height={40} className="w-full h-full object-contain p-1" />
               </div>
-              <span className={`text-sm font-medium flex-1 text-left ${selectedCategory === cat.id ? 'text-purple-600' : 'text-gray-700'}`}>{cat.name}</span>
-              {selectedCategory === cat.id && <Check size={16} className="text-purple-600" />}
+              <span className={`text-sm font-medium flex-1 text-left ${selectedCategory === cat.id ? 'text-[#0EAD69]' : 'text-gray-700'}`}>{cat.name}</span>
+              {selectedCategory === cat.id && <Check size={16} className="text-[#0EAD69]" />}
             </button>
           ))}
         </div>
@@ -640,7 +640,7 @@ export default function HomePage() {
           <MapPin size={14} className="text-gray-400" />
           <span>{storeSettings?.address_display || 'Londrina - PR'}</span>
           <span className="text-gray-300">•</span>
-          <button onClick={() => setIsStoreInfoOpen(true)} className="text-purple-600 font-medium hover:underline">Mais informações</button>
+          <button onClick={() => setIsStoreInfoOpen(true)} className="text-[#0EAD69] font-medium hover:underline">Mais informações</button>
         </div>
         <p className={`font-semibold text-sm flex items-center justify-center gap-1 ${storeSettings?.is_open !== false ? 'text-green-500' : 'text-red-400'}`}>
           <Clock size={13} />
@@ -654,7 +654,7 @@ export default function HomePage() {
       <div className="mx-4 my-3">
         <button onClick={() => setIsDeliveryOpen(true)} className="w-full flex items-center justify-between px-4 py-4 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-purple-100 rounded-full flex items-center justify-center"><Bike size={18} className="text-purple-600" /></div>
+            <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center"><Bike size={18} className="text-[#0EAD69]" /></div>
             <span className="font-semibold text-gray-800 text-sm">Calcular taxa e tempo de entrega</span>
           </div>
           <ChevronRight size={18} className="text-gray-400" />
@@ -680,7 +680,7 @@ export default function HomePage() {
         </button>
         <div className="flex-1 relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Busque por um produto" className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-purple-400 shadow-sm" />
+          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Busque por um produto" className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-400 shadow-sm" />
         </div>
         <button className="w-10 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
           <Search size={18} className="text-gray-600" />
@@ -748,7 +748,7 @@ export default function HomePage() {
         <div className="px-4 mb-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-bold text-gray-900">{searchQuery ? `"${searchQuery}"` : selectedCategoryName.split(' ').slice(0, 4).join(' ')}</h2>
-            <button onClick={() => { setSearchQuery(''); setSelectedCategory(null); }} className="text-purple-600 text-sm font-medium">Limpar</button>
+            <button onClick={() => { setSearchQuery(''); setSelectedCategory(null); }} className="text-[#0EAD69] text-sm font-medium">Limpar</button>
           </div>
           {loading ? (
             <div className="grid grid-cols-2 gap-3">
@@ -785,7 +785,7 @@ export default function HomePage() {
             <div className="p-4 bg-white border border-gray-100 border-t-0 rounded-b-2xl">
               <h3 className="font-bold text-gray-900 text-base uppercase mb-1">{promo.title}</h3>
               <p className="text-gray-500 text-sm leading-relaxed line-clamp-3">{promo.description}</p>
-              <button className="mt-3 text-purple-600 font-semibold text-sm flex items-center gap-1">Ver detalhes <ChevronRight size={14} /></button>
+              <button className="mt-3 text-[#0EAD69] font-semibold text-sm flex items-center gap-1">Ver detalhes <ChevronRight size={14} /></button>
             </div>
           </div>
         ))}
@@ -813,14 +813,14 @@ export default function HomePage() {
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-center z-40 h-[70px] max-w-2xl mx-auto">
+      <nav className="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 flex items-center z-40 h-[70px] max-w-2xl mx-auto">
         {[
           { id: 'inicio', icon: Home, label: 'Início' },
           { id: 'promocoes', icon: Tag, label: 'Promoções' },
           { id: 'pedidos', icon: ShoppingBag, label: 'Pedidos' },
           { id: 'perfil', icon: User, label: 'Perfil' },
         ].map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id as typeof activeTab)} className={`flex-1 flex flex-col items-center gap-1 py-2 transition-colors ${activeTab === tab.id ? 'text-purple-600' : 'text-gray-400'}`}>
+          <button key={tab.id} onClick={() => setActiveTab(tab.id as typeof activeTab)} className={`flex-1 flex flex-col items-center gap-1 py-2 transition-colors ${activeTab === tab.id ? 'text-white' : 'text-gray-500'}`}>
             <tab.icon size={22} strokeWidth={activeTab === tab.id ? 2.5 : 1.5} />
             <span className="text-[10px] font-semibold">{tab.label}</span>
           </button>
@@ -829,7 +829,7 @@ export default function HomePage() {
 
       {/* Cart FAB */}
       {cart.totalItems > 0 && (
-        <button onClick={() => setIsCartOpen(true)} className="fixed bottom-[90px] right-4 w-14 h-14 bg-purple-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-purple-700 transition-colors z-30">
+        <button onClick={() => setIsCartOpen(true)} className="fixed bottom-[90px] right-4 w-14 h-14 bg-black text-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-800 transition-colors z-30">
           <ShoppingBag size={24} />
           <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">{cart.totalItems}</span>
         </button>
