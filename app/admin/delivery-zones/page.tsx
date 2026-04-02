@@ -9,7 +9,7 @@ import type { ZoneMapZone } from './ZoneMap';
 import {
   Truck, Plus, Pencil, Trash2, Check, X, Loader2,
   Navigation, Clock, DollarSign, Layers, Search,
-  PenLine, Undo2, CheckCircle2, MapPin,
+  PenLine, Undo2, CheckCircle2, MapPin, Building2, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
 
@@ -42,6 +42,12 @@ interface NominatimResult {
     type: 'Polygon' | 'MultiPolygon';
     coordinates: number[][][];
   } | null;
+}
+
+interface OverpassNeighborhood {
+  id: number;
+  name: string;
+  polygon: [number, number][];
 }
 
 /** Converte coordenadas GeoJSON [lng, lat] para [[lat, lng]] */
@@ -86,10 +92,16 @@ export default function DeliveryZonesPage() {
   const [polygonDraft, setPolygonDraft] = useState<[number, number][] | null>(null);
   const [polygonSource, setPolygonSource] = useState<'nominatim' | 'manual' | null>(null);
 
-  // Busca de bairro
+  // Busca de bairro (manual)
   const [neighborQuery, setNeighborQuery] = useState('');
   const [searchResults, setSearchResults] = useState<NominatimResult[]>([]);
   const [searching, setSearching] = useState(false);
+
+  // Busca por cidade (Overpass API)
+  const [cityQuery, setCityQuery] = useState('');
+  const [cityNeighborhoods, setCityNeighborhoods] = useState<OverpassNeighborhood[]>([]);
+  const [searchingCity, setSearchingCity] = useState(false);
+  const [cityListExpanded, setCityListExpanded] = useState(true);
 
   // Modo de desenho manual
   const [drawMode, setDrawMode] = useState(false);
@@ -118,6 +130,8 @@ export default function DeliveryZonesPage() {
     setDrawPoints([]);
     setNeighborQuery('');
     setSearchResults([]);
+    setCityQuery('');
+    setCityNeighborhoods([]);
   }
 
   function startEdit(zone?: DeliveryZone) {
@@ -217,6 +231,59 @@ export default function DeliveryZonesPage() {
       toast('Localização salva!');
     }
     setSavingLoc(false);
+  }
+
+  /** Busca todos os bairros de uma cidade via Overpass API */
+  async function searchNeighborhoodsByCity() {
+    if (!cityQuery.trim()) return;
+    setSearchingCity(true);
+    setCityNeighborhoods([]);
+    setCityListExpanded(true);
+    try {
+      const city = cityQuery.trim().replace(/"/g, '\\"');
+      const query = `[out:json][timeout:30];area["name"="${city}"]->.a;(way["place"~"suburb|neighbourhood|quarter"](area.a);relation["place"~"suburb|neighbourhood|quarter"](area.a););out geom qt;`;
+      const res = await fetch(
+        `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`,
+        { headers: { 'User-Agent': 'POD-House/1.0' } },
+      );
+      const data = await res.json();
+      const neighborhoods: OverpassNeighborhood[] = [];
+      for (const el of data.elements ?? []) {
+        const name: string | undefined = el.tags?.name;
+        if (!name) continue;
+        let polygon: [number, number][] | null = null;
+        if (el.type === 'way' && el.geometry) {
+          polygon = (el.geometry as { lat: number; lon: number }[]).map(p => [p.lat, p.lon] as [number, number]);
+        } else if (el.type === 'relation' && el.members) {
+          const outer = (el.members as { role: string; geometry?: { lat: number; lon: number }[] }[])
+            .find(m => m.role === 'outer' && m.geometry && m.geometry.length > 0);
+          if (outer?.geometry) {
+            polygon = outer.geometry.map(p => [p.lat, p.lon] as [number, number]);
+          }
+        }
+        if (polygon && polygon.length >= 3) {
+          neighborhoods.push({ id: el.id as number, name, polygon });
+        }
+      }
+      neighborhoods.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+      setCityNeighborhoods(neighborhoods);
+      if (neighborhoods.length === 0) {
+        toast('Nenhum bairro encontrado. Verifique o nome da cidade (use acentos, ex: "Foz do Iguaçu").', 'error');
+      }
+    } catch {
+      toast('Erro ao buscar bairros da cidade.', 'error');
+    }
+    setSearchingCity(false);
+  }
+
+  /** Aplica bairro da lista de cidade como polígono da zona */
+  function applyCityNeighborhood(n: OverpassNeighborhood) {
+    setPolygonDraft(n.polygon);
+    setPolygonSource('nominatim');
+    setForm(f => ({ ...f, name: f.name.trim() ? f.name : n.name }));
+    setDrawMode(false);
+    setDrawPoints([]);
+    setSearchResults([]);
   }
 
   /** Busca polígono do bairro via Nominatim */
@@ -475,7 +542,69 @@ export default function DeliveryZonesPage() {
               )}
             </div>
 
-            {/* Busca de bairro */}
+            {/* ── Busca por cidade ── */}
+            <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-3 space-y-3">
+              <p className="text-xs font-bold text-blue-400 flex items-center gap-1.5">
+                <Building2 size={12} /> Importar bairros por cidade
+              </p>
+              <div className="flex gap-2">
+                <input
+                  value={cityQuery}
+                  onChange={e => setCityQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && searchNeighborhoodsByCity()}
+                  placeholder="Ex: Foz do Iguaçu"
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"
+                />
+                <button
+                  onClick={searchNeighborhoodsByCity}
+                  disabled={searchingCity || !cityQuery.trim()}
+                  className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-colors whitespace-nowrap"
+                >
+                  {searchingCity ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+                  Buscar
+                </button>
+              </div>
+              <p className="text-gray-600 text-[10px]">
+                Lista todos os bairros do município via OpenStreetMap · Use acentos (ex: Londrina, Foz do Iguaçu)
+              </p>
+
+              {/* Lista de bairros da cidade */}
+              {cityNeighborhoods.length > 0 && (
+                <div>
+                  <button
+                    onClick={() => setCityListExpanded(v => !v)}
+                    className="flex items-center gap-1.5 text-xs text-blue-400 font-bold mb-1.5 hover:text-blue-300 transition-colors"
+                  >
+                    {cityListExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    {cityNeighborhoods.length} bairro{cityNeighborhoods.length !== 1 ? 's' : ''} encontrado{cityNeighborhoods.length !== 1 ? 's' : ''} — clique para selecionar
+                  </button>
+                  {cityListExpanded && (
+                    <div className="border border-gray-700 rounded-xl overflow-hidden max-h-52 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+                      {cityNeighborhoods.map(n => (
+                        <button
+                          key={n.id}
+                          onClick={() => applyCityNeighborhood(n)}
+                          className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-blue-600/20 hover:text-white transition-colors border-b border-gray-800 last:border-0 flex items-center gap-2"
+                        >
+                          <MapPin size={12} className="text-blue-400 flex-shrink-0" />
+                          <span>{n.name}</span>
+                          <span className="ml-auto text-[10px] text-gray-600 flex-shrink-0">{n.polygon.length} pts</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Separador */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-gray-800" />
+              <span className="text-xs text-gray-600">ou buscar manualmente</span>
+              <div className="flex-1 h-px bg-gray-800" />
+            </div>
+
+            {/* Busca de bairro manual */}
             <div>
               <label className="text-xs text-gray-400 uppercase tracking-wide mb-1.5 block">
                 Buscar bairro / região
@@ -501,7 +630,7 @@ export default function DeliveryZonesPage() {
                 Busca no OpenStreetMap — inclua a cidade para melhores resultados
               </p>
 
-              {/* Resultados da busca */}
+              {/* Resultados da busca manual */}
               {searchResults.length > 0 && (
                 <div className="mt-2 border border-gray-700 rounded-xl overflow-hidden">
                   {searchResults.map(r => (
