@@ -39,6 +39,7 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
@@ -69,6 +70,12 @@ export default function AdminProductsPage() {
 
   useEffect(() => { fetchProducts(page); }, [supabase, page]);
 
+  // Otimização: Debounce para evitar re-renderizações excessivas ao digitar na busca
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   async function deleteProduct(id: string) {
     const { error } = await supabase.from('products').delete().eq('id', id);
     if (error) {
@@ -82,9 +89,9 @@ export default function AdminProductsPage() {
   }
 
   const filtered = products.filter(p => {
-    const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.categories?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.product_variants.some(v => v.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      p.categories?.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      p.product_variants.some(v => v.name.toLowerCase().includes(debouncedSearch.toLowerCase()));
     const matchStatus = filterStatus === 'all' ? true : filterStatus === 'active' ? p.active : !p.active;
     return matchSearch && matchStatus;
   });

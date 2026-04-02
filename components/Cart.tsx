@@ -71,6 +71,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, onRemov
                           src={item.imageUrl}
                           alt={item.name}
                           fill
+                          sizes="80px"
                           className="object-cover"
                           referrerPolicy="no-referrer"
                         />
