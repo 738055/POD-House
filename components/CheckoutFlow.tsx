@@ -275,7 +275,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
       : null;
 
     const msg = [
-      `*NOVO PEDIDO - POD HOUSE* 🛒`,
+      `*NOVO PEDIDO - PODS Londrina* 🛒`,
       ``,
       `*Pedido:* #${result.order_id.slice(0, 8)}`,
       `*Cliente:* ${name}`,

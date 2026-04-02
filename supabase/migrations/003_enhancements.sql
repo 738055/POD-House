@@ -98,15 +98,15 @@ insert into public.whatsapp_templates (name, slug, category, message, variables)
    ARRAY['nome','pedido_id']),
 
   ('Saiu para Entrega', 'order_out_for_delivery', 'order_status',
-   'Olá {{nome}}! 🏍️\n\nSeu pedido #{{pedido_id}} saiu para entrega!\nFique atento, logo chegará no seu endereço.\n\nPOD House 💜',
+   'Olá {{nome}}! 🏍️\n\nSeu pedido #{{pedido_id}} saiu para entrega!\nFique atento, logo chegará no seu endereço.\n\nPODs Londrinae 💜',
    ARRAY['nome','pedido_id']),
 
   ('Pedido Entregue', 'order_delivered', 'order_status',
-   'Olá {{nome}}! ✅\n\nSeu pedido #{{pedido_id}} foi entregue com sucesso!\n\n⭐ Avalie sua experiência e ganhe pontos extras!\n💜 Obrigado por escolher a POD House!',
+   'Olá {{nome}}! ✅\n\nSeu pedido #{{pedido_id}} foi entregue com sucesso!\n\n⭐ Avalie sua experiência e ganhe pontos extras!\n💜 Obrigado por escolher a PODS Londrina!',
    ARRAY['nome','pedido_id']),
 
   ('Promoção do Dia', 'daily_promo', 'promotion',
-   '🔥 *PROMOÇÃO DO DIA* 🔥\n\n{{titulo}}\n{{descricao}}\n\n🎟️ Use o cupom: *{{cupom}}*\n⏰ Válido somente hoje!\n\nAproveite! 💜 POD House',
+   '🔥 *PROMOÇÃO DO DIA* 🔥\n\n{{titulo}}\n{{descricao}}\n\n🎟️ Use o cupom: *{{cupom}}*\n⏰ Válido somente hoje!\n\nAproveite! 💜 PODS Londrina',
    ARRAY['titulo','descricao','cupom']),
 
   ('Boas-vindas', 'welcome', 'welcome',

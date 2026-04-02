@@ -10,8 +10,8 @@ const rubik = Rubik({
 });
 
 export const metadata: Metadata = {
-  title: 'POD House - Delivery',
-  description: 'POD House - Os melhores pods e acessórios com entrega rápida em Londrina - PR.',
+  title: 'PODS Londrina',
+  description: 'PODS Londrina - Os melhores pods e acessórios com entrega rápida em Londrina - PR.',
 };
 
 export default function RootLayout({children}: {children: React.ReactNode}) {

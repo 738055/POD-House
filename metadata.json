@@ -1,5 +1,5 @@
 {
-  "name": "House Delivery - Pod House",
+  "name": "PODs Londrina",
   "description": "Sistema de delivery para Pods e acessórios com variações, estoque, promoções e cashback.",
   "requestFramePermissions": ["geolocation"]
 }
