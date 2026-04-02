@@ -17,6 +17,40 @@ interface ImageUploadProps {
   aspectRatio?: 'square' | 'landscape' | 'wide';
 }
 
+// ── Compressor de Imagem Client-side ────────────────────────────────────────
+const compressImage = async (file: File): Promise<File> => {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.src = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+      const maxSize = 1080; // Redimensiona para no máximo 1080x1080px
+
+      if (width > maxSize || height > maxSize) {
+        if (width > height) {
+          height = Math.round((height * maxSize) / width);
+          width = maxSize;
+        } else {
+          width = Math.round((width * maxSize) / height);
+          height = maxSize;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return resolve(file); // fallback
+      
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob((blob) => {
+        if (blob) resolve(new File([blob], file.name.replace(/\.[^/.]+$/, '.webp'), { type: 'image/webp' }));
+        else resolve(file);
+      }, 'image/webp', 0.85);
+    };
+    img.onerror = () => resolve(file);
+  });
+};
+
 export function ImageUpload({
   bucket,
   folder = '',
@@ -38,22 +72,20 @@ export function ImageUpload({
     const file = e.target.files?.[0];
     if (!file || !supabase) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Arquivo muito grande. Máximo 5MB.');
-      return;
-    }
-
     setUploading(true);
     setError(null);
 
     try {
-      const ext = file.name.split('.').pop() ?? 'jpg';
+      // Comprime a imagem magicamente no navegador antes de enviar
+      const compressedFile = await compressImage(file);
+      
+      const ext = 'webp';
       const prefix = folder ? `${folder}/` : '';
       const fileName = `${prefix}${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from(bucket)
-        .upload(fileName, file, { upsert: false });
+        .upload(fileName, compressedFile, { upsert: false });
 
       if (uploadError) throw uploadError;
 
@@ -131,7 +163,7 @@ export function ImageUpload({
             </div>
             <div className="text-center">
               <p className="text-xs font-semibold text-gray-400">Clique para enviar</p>
-              <p className="text-[10px] text-gray-600 mt-0.5">PNG, JPG, WEBP · máx 5MB</p>
+              <p className="text-[10px] text-gray-600 mt-0.5">Auto-compressão (1080px)</p>
             </div>
           </div>
         )}
