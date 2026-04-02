@@ -51,7 +51,7 @@ export function Sidebar({ setMobileOpen, signOut }: SidebarProps) {
           <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-900/20">
             <Image src="/logo.png" alt="Logo" width={24} height={24} className="brightness-0 invert" />
           </div>
-          <span className="text-white font-black text-xl tracking-tighter">POD HOUSE</span>
+          <span className="text-white font-black text-xl tracking-tighter">PODS Londrina</span>
         </div>
         <button 
           onClick={() => setMobileOpen(false)}
