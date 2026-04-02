@@ -694,8 +694,8 @@ export default function DeliveryZonesPage() {
             />
           </div>
 
-          {/* ── Lista de zonas com edição inline de tarifas ── */}
-          <div className="lg:col-span-2 space-y-2">
+          {/* ── Tabela de zonas compacta ── */}
+          <div className="lg:col-span-2 flex flex-col">
             {zones.length === 0 ? (
               <div className="text-center py-16 text-gray-500 bg-gray-900 rounded-2xl border border-gray-800">
                 <Truck size={40} className="mx-auto mb-3 opacity-20" />
@@ -703,51 +703,46 @@ export default function DeliveryZonesPage() {
                 <p className="text-sm mt-1">Busque uma cidade acima para importar</p>
               </div>
             ) : (
-              zones.map(zone => (
-                <div key={zone.id}
-                  className={`rounded-2xl border transition-all duration-150 ${
-                    selectedId === zone.id ? 'border-gray-600 bg-gray-800' : 'border-gray-800 bg-gray-900 hover:border-gray-700'
-                  }`}
-                >
-                  {/* Linha superior: nome + status + ações */}
-                  <div className="flex items-center gap-3 px-4 pt-3 pb-2">
-                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: zone.color }} />
-                    <p
-                      className="font-bold text-white text-sm flex-1 truncate cursor-pointer"
-                      onClick={() => setSelectedId(selectedId === zone.id ? null : zone.id)}
-                    >
-                      {zone.name}
-                    </p>
-                    <button
-                      onClick={() => toggleActive(zone)}
-                      className={`text-[10px] px-2 py-1 rounded-full font-black uppercase tracking-wide transition-colors ${
-                        zone.active ? 'bg-green-500/15 text-green-400 hover:bg-green-500/25' : 'bg-gray-700/60 text-gray-400 hover:bg-gray-700'
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden flex flex-col" style={{ maxHeight: '540px' }}>
+
+                {/* Cabeçalho fixo */}
+                <div className="flex items-center px-3 py-2 border-b border-gray-800 bg-gray-900/95 sticky top-0 flex-shrink-0">
+                  <span className="w-5 flex-shrink-0" />
+                  <span className="flex-1 min-w-0 text-[10px] font-bold text-gray-500 uppercase tracking-wide">Zona</span>
+                  <span className="w-20 flex-shrink-0 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wide">Frete</span>
+                  <span className="w-18 flex-shrink-0 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wide">Tempo</span>
+                  <span className="w-14 flex-shrink-0 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wide">Status</span>
+                  <span className="w-14 flex-shrink-0" />
+                </div>
+
+                {/* Linhas com scroll */}
+                <div className="overflow-y-auto flex-1" style={{ scrollbarWidth: 'thin' }}>
+                  {zones.map(zone => (
+                    <div
+                      key={zone.id}
+                      className={`flex items-center px-3 py-2 border-b border-gray-800/50 last:border-0 transition-colors ${
+                        selectedId === zone.id ? 'bg-gray-800/70' : 'hover:bg-gray-800/30'
                       }`}
                     >
-                      {zone.active ? 'Ativa' : 'Inativa'}
-                    </button>
-                    <div className="flex gap-1">
-                      <button onClick={() => startEdit(zone)} title="Editar mapa"
-                        className="p-1.5 text-gray-500 hover:text-white hover:bg-gray-700 rounded-lg transition-all">
-                        <Pencil size={12} />
-                      </button>
-                      <button onClick={() => setConfirmId(zone.id)} title="Excluir"
-                        className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </div>
+                      {/* Cor */}
+                      <div className="w-5 flex-shrink-0 flex items-center">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: zone.color }} />
+                      </div>
 
-                  {/* Linha inferior: tarifas inline editáveis */}
-                  <div className="flex gap-2 px-4 pb-3">
-                    {/* Taxa de entrega */}
-                    <div className="flex-1 bg-gray-800 rounded-xl px-3 py-2 flex items-center gap-2">
-                      <DollarSign size={12} className="text-green-400 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-gray-500 text-[9px] uppercase font-bold">Frete</p>
+                      {/* Nome */}
+                      <p
+                        className="flex-1 min-w-0 text-white text-xs font-semibold truncate pr-2 cursor-pointer hover:text-gray-300 transition-colors"
+                        title={zone.name}
+                        onClick={() => setSelectedId(selectedId === zone.id ? null : zone.id)}
+                      >
+                        {zone.name}
+                      </p>
+
+                      {/* Frete — inline editável */}
+                      <div className="w-20 flex-shrink-0 flex justify-center">
                         {inlineEdit?.zoneId === zone.id && inlineEdit.field === 'delivery_fee' ? (
-                          <div className="flex items-center gap-1">
-                            <span className="text-gray-400 text-xs">R$</span>
+                          <div className="flex items-center gap-0.5">
+                            <span className="text-gray-500 text-[10px]">R$</span>
                             <input
                               autoFocus
                               type="number" step="0.50" min="0"
@@ -755,29 +750,25 @@ export default function DeliveryZonesPage() {
                               onChange={e => setInlineEdit(prev => prev ? { ...prev, value: e.target.value } : null)}
                               onBlur={commitInline}
                               onKeyDown={e => { if (e.key === 'Enter') commitInline(); if (e.key === 'Escape') setInlineEdit(null); }}
-                              className="w-full bg-transparent text-white font-black text-sm focus:outline-none"
+                              className="w-14 bg-gray-700 border border-gray-600 text-white text-xs font-bold text-center rounded px-1 py-0.5 focus:outline-none focus:border-green-500"
                             />
-                            {savingInline && <Loader2 size={10} className="animate-spin text-gray-400 flex-shrink-0" />}
+                            {savingInline && <Loader2 size={9} className="animate-spin text-gray-400" />}
                           </div>
                         ) : (
                           <button
                             onClick={() => startInline(zone.id, 'delivery_fee', zone.delivery_fee)}
-                            className="text-white font-black text-sm hover:text-green-300 transition-colors w-full text-left group flex items-center gap-1"
+                            className="text-green-400 text-xs font-bold hover:text-green-300 transition-colors group flex items-center gap-0.5"
                           >
                             {zone.delivery_fee === 0 ? 'Grátis' : formatCurrency(zone.delivery_fee)}
-                            <Pencil size={9} className="opacity-0 group-hover:opacity-60 transition-opacity flex-shrink-0" />
+                            <Pencil size={8} className="opacity-0 group-hover:opacity-60 transition-opacity" />
                           </button>
                         )}
                       </div>
-                    </div>
 
-                    {/* Tempo estimado */}
-                    <div className="flex-1 bg-gray-800 rounded-xl px-3 py-2 flex items-center gap-2">
-                      <Clock size={12} className="text-blue-400 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-gray-500 text-[9px] uppercase font-bold">Tempo</p>
+                      {/* Tempo — inline editável */}
+                      <div className="w-18 flex-shrink-0 flex justify-center">
                         {inlineEdit?.zoneId === zone.id && inlineEdit.field === 'estimated_minutes' ? (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-0.5">
                             <input
                               autoFocus
                               type="number" step="5" min="5"
@@ -785,25 +776,63 @@ export default function DeliveryZonesPage() {
                               onChange={e => setInlineEdit(prev => prev ? { ...prev, value: e.target.value } : null)}
                               onBlur={commitInline}
                               onKeyDown={e => { if (e.key === 'Enter') commitInline(); if (e.key === 'Escape') setInlineEdit(null); }}
-                              className="w-full bg-transparent text-white font-black text-sm focus:outline-none"
+                              className="w-12 bg-gray-700 border border-gray-600 text-white text-xs font-bold text-center rounded px-1 py-0.5 focus:outline-none focus:border-blue-500"
                             />
-                            <span className="text-gray-400 text-xs flex-shrink-0">min</span>
-                            {savingInline && <Loader2 size={10} className="animate-spin text-gray-400 flex-shrink-0" />}
+                            <span className="text-gray-500 text-[10px]">min</span>
+                            {savingInline && <Loader2 size={9} className="animate-spin text-gray-400" />}
                           </div>
                         ) : (
                           <button
                             onClick={() => startInline(zone.id, 'estimated_minutes', zone.estimated_minutes)}
-                            className="text-white font-black text-sm hover:text-blue-300 transition-colors w-full text-left group flex items-center gap-1"
+                            className="text-blue-400 text-xs font-bold hover:text-blue-300 transition-colors group flex items-center gap-0.5"
                           >
-                            {zone.estimated_minutes} min
-                            <Pencil size={9} className="opacity-0 group-hover:opacity-60 transition-opacity flex-shrink-0" />
+                            {zone.estimated_minutes}min
+                            <Pencil size={8} className="opacity-0 group-hover:opacity-60 transition-opacity" />
                           </button>
                         )}
                       </div>
+
+                      {/* Status */}
+                      <div className="w-14 flex-shrink-0 flex justify-center">
+                        <button
+                          onClick={() => toggleActive(zone)}
+                          className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wide transition-colors ${
+                            zone.active
+                              ? 'bg-green-500/15 text-green-400 hover:bg-green-500/25'
+                              : 'bg-gray-700/60 text-gray-500 hover:bg-gray-700'
+                          }`}
+                        >
+                          {zone.active ? 'Ativa' : 'Off'}
+                        </button>
+                      </div>
+
+                      {/* Ações */}
+                      <div className="w-14 flex-shrink-0 flex justify-end gap-0.5">
+                        <button onClick={() => startEdit(zone)} title="Editar mapa"
+                          className="p-1 text-gray-600 hover:text-white hover:bg-gray-700 rounded transition-all">
+                          <Pencil size={11} />
+                        </button>
+                        <button onClick={() => setConfirmId(zone.id)} title="Excluir"
+                          className="p-1 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded transition-all">
+                          <Trash2 size={11} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))
+
+                {/* Rodapé com totais */}
+                <div className="border-t border-gray-800 px-3 py-2 flex items-center justify-between flex-shrink-0">
+                  <span className="text-[10px] text-gray-600">
+                    {zones.length} zona{zones.length !== 1 ? 's' : ''} · {zones.filter(z => z.active).length} ativa{zones.filter(z => z.active).length !== 1 ? 's' : ''}
+                  </span>
+                  <button onClick={() => startEdit()}
+                    className="text-[10px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 transition-colors">
+                    <Plus size={10} /> Nova zona
+                  </button>
+                </div>
+
+              </div>
             )}
           </div>
         </div>
