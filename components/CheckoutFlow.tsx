@@ -126,7 +126,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
           uf:           data.uf           ?? prev.uf,
         }));
         // Inicia geocoding em paralelo
-        geocodeAndCheckZone(clean);
+        geocodeAndCheckZone(clean, data.localidade, data.uf);
       }
     } finally {
       setLoadingCep(false);
@@ -134,11 +134,20 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
   }
 
   // ── 2. Nominatim geocode → RPC frete por coordenadas ──
-  async function geocodeAndCheckZone(cep: string) {
+  async function geocodeAndCheckZone(cep: string, city?: string, uf?: string) {
     setZoneLoading(true);
     try {
+      const params = new URLSearchParams({
+        postalcode: cep,
+        countrycodes: 'br',
+        format: 'json',
+        limit: '1',
+        addressdetails: '0',
+      });
+      if (city) params.set('city', city);
+      if (uf)   params.set('state', uf);
       const geoRes = await fetch(
-        `https://nominatim.openstreetmap.org/search?postalcode=${cep}&countrycodes=br&format=json&limit=1`,
+        `https://nominatim.openstreetmap.org/search?${params.toString()}`,
         { headers: { 'User-Agent': 'POD-House/1.0', 'Accept-Language': 'pt-BR' } }
       );
       const geoData = await geoRes.json();
@@ -427,7 +436,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                 <div className="space-y-2 mb-2">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Endereços salvos</p>
                   {savedAddresses.map(a => (
-                    <button key={a.id} onClick={() => { setSelectedAddrId(a.id); setZoneResult(null); setZoneError(null); geocodeAndCheckZone(a.cep); }}
+                    <button key={a.id} onClick={() => { setSelectedAddrId(a.id); setZoneResult(null); setZoneError(null); geocodeAndCheckZone(a.cep, a.city, a.uf); }}
                       className={`w-full flex items-start gap-3 p-3 rounded-xl border-2 text-left transition-all ${
                         selectedAddrId === a.id ? 'border-black bg-gray-50' : 'border-gray-200'
                       }`}>

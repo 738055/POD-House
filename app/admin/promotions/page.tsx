@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/hooks/use-auth';
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Loader2, AlertCircle, Percent } from 'lucide-react';
+import { Plus, Pencil, Loader2, AlertCircle, CalendarDays, Flame } from 'lucide-react';
 import Link from 'next/link';
 
 type Promotion = {
@@ -52,6 +52,28 @@ export default function AdminPromotionsPage() {
         <Link href="/admin/promotions/new" className="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 hover:bg-purple-700 transition-colors">
           <Plus size={18} />
           Nova Promoção
+        </Link>
+      </div>
+
+      {/* Quick links */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+        <Link href="/admin/promotions/calendar" className="flex items-center gap-4 bg-gray-900 border border-gray-700 rounded-xl p-4 hover:border-purple-500 transition-colors group">
+          <div className="w-11 h-11 bg-purple-500/15 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-purple-500/25 transition-colors">
+            <CalendarDays size={22} className="text-purple-400" />
+          </div>
+          <div>
+            <p className="font-bold text-white text-sm">Calendário de Promoções</p>
+            <p className="text-gray-400 text-xs">Agende promoções e cupons por dia/hora</p>
+          </div>
+        </Link>
+        <Link href="/admin/promotions/daily-specials" className="flex items-center gap-4 bg-gray-900 border border-gray-700 rounded-xl p-4 hover:border-orange-500 transition-colors group">
+          <div className="w-11 h-11 bg-orange-500/15 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-orange-500/25 transition-colors">
+            <Flame size={22} className="text-orange-400" />
+          </div>
+          <div>
+            <p className="font-bold text-white text-sm">Produtos do Dia</p>
+            <p className="text-gray-400 text-xs">Destaque produtos/sabores por dia da semana</p>
+          </div>
         </Link>
       </div>
 

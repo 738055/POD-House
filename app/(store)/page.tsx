@@ -24,7 +24,9 @@ import {
   Loader2,
   AlertTriangle,
   Truck,
-  Ticket
+  Ticket,
+  Flame,
+  Zap
 } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { useAuth } from '@/hooks/use-auth';
@@ -86,6 +88,25 @@ type Product = {
   product_variants: ProductVariant[];
 };
 
+type DailySpecial = {
+  id: string;
+  product_id: string;
+  variant_id: string | null;
+  discount_type: 'percentage' | 'fixed' | 'none';
+  discount_value: number;
+  highlight_label: string;
+  active: boolean;
+  products: {
+    id: string;
+    name: string;
+    description: string | null;
+    base_price: number;
+    puffs: string | null;
+    product_variants: ProductVariant[];
+  } | null;
+  product_variants: ProductVariant | null;
+};
+
 interface ZoneResult {
   zone_name: string;
   delivery_fee: number;
@@ -95,6 +116,14 @@ interface ZoneResult {
 
 function formatCurrency(value: number): string {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+/** Formata dígitos de telefone: "43999991234" → "(43) 9 9999-1234" */
+function formatPhone(v: string): string {
+  const d = (v || '').replace(/\D/g, '').slice(0, 11);
+  if (d.length === 0) return v;
+  if (d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
 }
 
 // ── Product card ─────────────────────────────────────────────────────────────
@@ -402,8 +431,8 @@ function StoreInfoModal({ isOpen, onClose, settings }: {
     (settings?.whatsapp_number || settings?.phone_number) && {
       icon: Phone, title: 'Contato',
       text: [
-        settings?.whatsapp_number ? `WhatsApp: ${settings.whatsapp_number}` : null,
-        settings?.phone_number    ? `Telefone: ${settings.phone_number}` : null,
+        settings?.whatsapp_number ? `WhatsApp: ${formatPhone(settings.whatsapp_number)}` : null,
+        settings?.phone_number    ? `Telefone: ${formatPhone(settings.phone_number)}` : null,
       ].filter(Boolean).join('\n'),
     },
     settings?.delivery_info && { icon: Bike, title: 'Entrega', text: settings.delivery_info },
@@ -439,6 +468,15 @@ function StoreInfoModal({ isOpen, onClose, settings }: {
       </div>
     </div>
   );
+}
+
+function fmtCurrency(v: number) {
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+function discountedPrice(base: number, type: DailySpecial['discount_type'], value: number) {
+  if (type === 'percentage') return base * (1 - value / 100);
+  if (type === 'fixed') return Math.max(0, base - value);
+  return base;
 }
 
 // ── Promo modal ───────────────────────────────────────────────────────────────
@@ -513,6 +551,7 @@ export default function HomePage() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [dailySpecials, setDailySpecials] = useState<DailySpecial[]>([]);
   const [loading, setLoading] = useState(true);
 
   const { supabase, user, profile } = useAuth();
@@ -521,7 +560,11 @@ export default function HomePage() {
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
-      const [settingsRes, promotionsRes, categoriesRes, productsRes, couponsRes] = await Promise.all([
+      const todayDate = new Date();
+      const todayISO = `${todayDate.getFullYear()}-${String(todayDate.getMonth()+1).padStart(2,'0')}-${String(todayDate.getDate()).padStart(2,'0')}`;
+      const todayDow = todayDate.getDay();
+
+      const [settingsRes, promotionsRes, categoriesRes, productsRes, couponsRes, specialsRes] = await Promise.all([
         supabase.from('store_settings').select('store_name,logo_url,cover_url,whatsapp_number,phone_number,address_display,opening_hours,min_order_value,delivery_info,is_open').eq('id', 'default').single(),
         supabase.from('promotions').select('*').eq('active', true).order('sort_order'),
         supabase.from('categories').select('*').eq('active', true).order('sort_order'),
@@ -530,12 +573,25 @@ export default function HomePage() {
           product_variants ( id, product_id, name, image_url, price_override, stock, active )
         `).eq('active', true).order('sort_order'),
         supabase.from('coupons').select('id').eq('active', true).limit(1),
+        supabase.from('daily_specials')
+          .select('*, products(id,name,description,base_price,puffs,product_variants(id,product_id,name,image_url,price_override,stock,active)), product_variants(id,product_id,name,image_url,price_override,stock,active)')
+          .eq('active', true)
+          .or(`scheduled_date.eq.${todayISO},day_of_week.eq.${todayDow}`),
       ]);
 
       if (settingsRes.data) setStoreSettings(settingsRes.data as StoreSettings);
       if (promotionsRes.data) setPromotions(promotionsRes.data);
       if (categoriesRes.data) setCategories(categoriesRes.data);
       if (couponsRes.data && couponsRes.data.length > 0) setShowCouponBanner(true);
+      if (specialsRes.data) {
+        const raw = specialsRes.data as DailySpecial[];
+        // Prefer scheduled_date over day_of_week for same product
+        const exact = raw.filter(s => s.products !== null);
+        const dateSpecials = exact.filter(s => (s as any).scheduled_date === todayISO);
+        const dateProductIds = new Set(dateSpecials.map(s => s.product_id));
+        const dowSpecials = exact.filter(s => !(s as any).scheduled_date && !dateProductIds.has(s.product_id));
+        setDailySpecials([...dateSpecials, ...dowSpecials]);
+      }
       if (productsRes.data) {
         // Filtra variantes com estoque > 0 e ativas; remove produtos sem variantes disponíveis
         const filtered = (productsRes.data as Product[])
@@ -753,6 +809,56 @@ export default function HomePage() {
             </>
           )}
 
+          {/* Produto do Dia */}
+          {!searchQuery && !selectedCategory && dailySpecials.length > 0 && (
+            <div className="mb-6 px-3 lg:px-0">
+              <div className="flex items-center gap-2 mb-3">
+                <Flame size={18} className="text-orange-500" />
+                <h2 className="text-lg font-bold text-gray-900">Produto do Dia</h2>
+              </div>
+              <div className="flex gap-3 overflow-x-auto no-scrollbar lg:grid lg:grid-cols-3 lg:overflow-visible pb-1">
+                {dailySpecials.map(special => {
+                  const p = special.products;
+                  if (!p) return null;
+                  const variant = special.product_variants;
+                  const basePrice = variant?.price_override ?? p.base_price;
+                  const finalPrice = discountedPrice(basePrice, special.discount_type, special.discount_value);
+                  const hasDiscount = special.discount_type !== 'none';
+                  const imgUrl = variant?.image_url ?? p.product_variants?.[0]?.image_url ?? '/logo.png';
+                  const fullProduct: Product = { ...p, is_featured: false, category_id: null } as Product;
+                  return (
+                    <div key={special.id} onClick={() => handleOpenProduct(fullProduct)}
+                      className="flex-shrink-0 w-[200px] lg:w-auto cursor-pointer bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:border-orange-400 transition-all">
+                      <div className="relative" style={{ aspectRatio: '4/3' }}>
+                        <Image src={imgUrl} alt={p.name} fill className="object-cover" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                        <span className="absolute top-2 left-2 bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wide">
+                          <Flame size={9} /> {special.highlight_label}
+                        </span>
+                        {hasDiscount && (
+                          <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                            {special.discount_type === 'percentage' ? `-${special.discount_value}%` : `-${fmtCurrency(special.discount_value)}`}
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <p className="font-bold text-gray-900 text-sm leading-tight">{p.name}</p>
+                        {variant && <p className="text-orange-600 text-xs font-medium mt-0.5">{variant.name}</p>}
+                        <div className="flex items-baseline gap-2 mt-2">
+                          <span className="text-base font-black text-orange-600">{fmtCurrency(finalPrice)}</span>
+                          {hasDiscount && <span className="text-xs text-gray-400 line-through">{fmtCurrency(basePrice)}</span>}
+                        </div>
+                        <button className="mt-2 w-full flex items-center justify-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs py-2 rounded-xl transition-colors">
+                          <Zap size={12} /> Ver oferta
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Featured products (Destaques) */}
           {!searchQuery && !selectedCategory && featuredProducts.length > 0 && (
             <>
@@ -915,7 +1021,7 @@ export default function HomePage() {
 
             {/* Coupon */}
             {showCouponBanner && (
-              <button className="w-full flex items-center justify-between bg-white rounded-2xl px-4 py-4 border border-gray-100 shadow-sm hover:bg-gray-50 transition-colors text-left">
+              <button onClick={() => setIsCheckoutOpen(true)} className="w-full flex items-center justify-between bg-white rounded-2xl px-4 py-4 border border-gray-100 shadow-sm hover:bg-gray-50 transition-colors text-left">
                 <div className="flex items-center gap-3">
                   <Ticket size={18} className="text-gray-500 flex-shrink-0" />
                   <div>
@@ -952,23 +1058,101 @@ export default function HomePage() {
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Promoções</h1>
         <p className="text-gray-500 text-sm">Aproveite nossas ofertas exclusivas</p>
       </div>
-      <div className="px-4 lg:px-0 grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {promotions.map(promo => (
-          <div key={promo.id} onClick={() => setSelectedPromo(promo)} className="cursor-pointer rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-shadow">
-            <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
-              <Image src={promo.image_url || '/banner.png'} alt={promo.title} fill className="object-cover" />
-            </div>
-            <div className="p-4 bg-white border border-gray-100 border-t-0 rounded-b-2xl">
-              <h3 className="font-bold text-gray-900 text-base uppercase mb-1">{promo.title}</h3>
-              <p className="text-gray-500 text-sm leading-relaxed line-clamp-3">{promo.description}</p>
-              <button className="mt-3 text-[#0EAD69] font-semibold text-sm flex items-center gap-1">Ver detalhes <ChevronRight size={14} /></button>
-            </div>
+
+      {/* Produto do Dia */}
+      {dailySpecials.length > 0 && (
+        <div className="px-4 lg:px-0 mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <Flame size={20} className="text-orange-500" />
+            <h2 className="text-lg font-bold text-gray-900">Produto do Dia</h2>
+            <span className="text-xs bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full ml-1">HOJE</span>
           </div>
-        ))}
-      </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {dailySpecials.map(special => {
+              const p = special.products;
+              if (!p) return null;
+              const variant = special.product_variants;
+              const basePrice = variant?.price_override ?? p.base_price;
+              const finalPrice = discountedPrice(basePrice, special.discount_type, special.discount_value);
+              const hasDiscount = special.discount_type !== 'none';
+              const imgUrl = variant?.image_url ?? p.product_variants?.[0]?.image_url ?? '/logo.png';
+              const fullProduct: Product = { ...p, is_featured: false, category_id: null } as Product;
+              return (
+                <div key={special.id} onClick={() => handleOpenProduct(fullProduct)}
+                  className="cursor-pointer bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:border-orange-400 transition-all">
+                  <div className="relative" style={{ aspectRatio: '16/9' }}>
+                    <Image src={imgUrl} alt={p.name} fill className="object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                    <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
+                      <div>
+                        <span className="bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 w-fit uppercase">
+                          <Flame size={9} /> {special.highlight_label}
+                        </span>
+                        <p className="text-white font-bold text-sm mt-1 drop-shadow">{p.name}</p>
+                        {variant && <p className="text-orange-200 text-xs">{variant.name}</p>}
+                      </div>
+                      <div className="text-right">
+                        {hasDiscount && (
+                          <p className="text-gray-300 text-xs line-through">{fmtCurrency(basePrice)}</p>
+                        )}
+                        <p className="text-white font-black text-lg drop-shadow">{fmtCurrency(finalPrice)}</p>
+                      </div>
+                    </div>
+                    {hasDiscount && (
+                      <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-black px-2 py-1 rounded-xl">
+                        {special.discount_type === 'percentage' ? `-${special.discount_value}%` : `-${fmtCurrency(special.discount_value)}`}
+                      </span>
+                    )}
+                  </div>
+                  <div className="px-4 py-3 flex items-center justify-between">
+                    <p className="text-xs text-gray-500">Clique para ver detalhes</p>
+                    <button className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs py-1.5 px-3 rounded-xl transition-colors">
+                      <Zap size={11} /> Ver oferta
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Promotion banners */}
+      {promotions.length > 0 && (
+        <div className="px-4 lg:px-0 mb-8">
+          <h2 className="text-lg font-bold text-gray-900 mb-3">Ofertas em Destaque</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {promotions.map(promo => (
+              <div key={promo.id} onClick={() => setSelectedPromo(promo)} className="cursor-pointer rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5">
+                <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
+                  <Image src={promo.image_url || '/banner.png'} alt={promo.title} fill className="object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <h3 className="font-black text-white text-base uppercase drop-shadow">{promo.title}</h3>
+                    {promo.description && <p className="text-white/80 text-xs mt-0.5 line-clamp-2">{promo.description}</p>}
+                  </div>
+                </div>
+                <div className="px-4 py-3 bg-white border border-gray-100 border-t-0 rounded-b-2xl flex items-center justify-between">
+                  <p className="text-xs text-gray-400">Toque para ver mais</p>
+                  <button className="text-[#0EAD69] font-semibold text-sm flex items-center gap-1">Ver detalhes <ChevronRight size={14} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {promotions.length === 0 && dailySpecials.length === 0 && (
+        <div className="px-4 lg:px-0 text-center py-12">
+          <Tag size={40} className="text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500 font-medium">Nenhuma promoção ativa no momento</p>
+          <p className="text-gray-400 text-sm mt-1">Fique de olho! Novas ofertas aparecem em breve.</p>
+        </div>
+      )}
+
       {featuredProducts.length > 0 && (
-        <div className="px-4 lg:px-0 mt-8 mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">Produtos em Promoção</h2>
+        <div className="px-4 lg:px-0 mb-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-3">Produtos em Destaque</h2>
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {featuredProducts.map(product => <ProductCard key={product.id} product={product} onOpen={handleOpenProduct} />)}
           </div>

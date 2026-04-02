@@ -9,9 +9,10 @@ import type { DeliveryZone } from '@/lib/supabase/types';
 import type { ZoneMapZone } from './ZoneMap';
 import {
   Truck, Plus, Pencil, Trash2, Check, X, Loader2,
-  Navigation, Clock, DollarSign, Layers, Search,
+  Navigation, Layers, Search,
   PenLine, Undo2, CheckCircle2, MapPin, Building2,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, CheckSquare, Square,
+  AlertTriangle,
 } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
 
@@ -37,15 +38,6 @@ const EMPTY_ZONE = {
 
 type ZoneForm = typeof EMPTY_ZONE;
 
-interface NominatimResult {
-  place_id: number;
-  display_name: string;
-  geojson: {
-    type: 'Polygon' | 'MultiPolygon';
-    coordinates: number[][][];
-  } | null;
-}
-
 interface OverpassNeighborhood {
   id: number;
   name: string;
@@ -56,22 +48,6 @@ interface InlineEdit {
   zoneId: string;
   field: 'delivery_fee' | 'estimated_minutes';
   value: string;
-}
-
-function geojsonToLatLng(geojson: NominatimResult['geojson']): [number, number][] | null {
-  if (!geojson) return null;
-  let ring: number[][];
-  if (geojson.type === 'Polygon') {
-    ring = geojson.coordinates[0];
-  } else if (geojson.type === 'MultiPolygon') {
-    ring = geojson.coordinates.reduce(
-      (biggest, poly) => poly[0].length > biggest.length ? poly[0] : biggest,
-      geojson.coordinates[0][0],
-    );
-  } else {
-    return null;
-  }
-  return ring.map(([lng, lat]) => [lat, lng] as [number, number]);
 }
 
 export default function DeliveryZonesPage() {
@@ -103,10 +79,15 @@ export default function DeliveryZonesPage() {
   const [inlineEdit, setInlineEdit] = useState<InlineEdit | null>(null);
   const [savingInline, setSavingInline] = useState(false);
 
-  // Tabela: busca + paginação
+  // Tabela: busca + paginação + ordenação
   const [searchZone, setSearchZone] = useState('');
   const [pageSize, setPageSize] = useState<10 | 20 | 30>(10);
   const [zonePage, setZonePage] = useState(0);
+  const [sortCol, setSortCol] = useState<'name' | 'delivery_fee' | 'estimated_minutes'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  // Busca dentro da lista de bairros importados
+  const [neighborhoodSearch, setNeighborhoodSearch] = useState('');
 
   // Centralizar mapa na zona selecionada
   const [viewPolygon, setViewPolygon] = useState<[number, number][] | null>(null);
@@ -144,6 +125,7 @@ export default function DeliveryZonesPage() {
     setCityNeighborhoods([]);
     setSelected(new Set());
     setCityListExpanded(true);
+    setNeighborhoodSearch('');
     try {
       const city = cityQuery.trim().replace(/"/g, '\\"');
       const query = `[out:json][timeout:30];area["name"="${city}"]->.a;(way["place"~"suburb|neighbourhood|quarter"](area.a);relation["place"~"suburb|neighbourhood|quarter"](area.a););out geom qt;`;
@@ -376,11 +358,24 @@ export default function DeliveryZonesPage() {
   const allSelected = cityNeighborhoods.length > 0 && selected.size === cityNeighborhoods.length;
   const existingNames = new Set(zones.map(z => z.name.toLowerCase()));
 
-  const filteredZones = zones.filter(z =>
-    z.name.toLowerCase().includes(searchZone.toLowerCase()),
-  );
+  function toggleSort(col: typeof sortCol) {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir('asc'); }
+  }
+
+  const filteredZones = zones
+    .filter(z => z.name.toLowerCase().includes(searchZone.toLowerCase()))
+    .sort((a, b) => {
+      const mul = sortDir === 'asc' ? 1 : -1;
+      if (sortCol === 'name') return a.name.localeCompare(b.name, 'pt-BR') * mul;
+      return (a[sortCol] - b[sortCol]) * mul;
+    });
   const totalZonePages = Math.max(1, Math.ceil(filteredZones.length / pageSize));
   const pagedZones = filteredZones.slice(zonePage * pageSize, (zonePage + 1) * pageSize);
+
+  const visibleNeighborhoods = cityNeighborhoods.filter(n =>
+    n.name.toLowerCase().includes(neighborhoodSearch.toLowerCase()),
+  );
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -499,27 +494,38 @@ export default function DeliveryZonesPage() {
         {cityNeighborhoods.length > 0 && (
           <div className="space-y-2">
             {/* Controles da lista */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <button
                 onClick={() => setCityListExpanded(v => !v)}
-                className="flex items-center gap-1.5 text-xs text-blue-400 font-bold hover:text-blue-300 transition-colors"
+                className="flex items-center gap-1.5 text-xs text-blue-400 font-bold hover:text-blue-300 transition-colors whitespace-nowrap"
               >
                 {cityListExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                {cityNeighborhoods.length} bairro{cityNeighborhoods.length !== 1 ? 's' : ''} encontrado{cityNeighborhoods.length !== 1 ? 's' : ''}
+                {cityNeighborhoods.length} bairro{cityNeighborhoods.length !== 1 ? 's' : ''}
               </button>
+              {cityListExpanded && (
+                <div className="relative flex-1 max-w-xs">
+                  <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                  <input
+                    value={neighborhoodSearch}
+                    onChange={e => setNeighborhoodSearch(e.target.value)}
+                    placeholder="Filtrar bairros..."
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-3 py-1 text-white text-xs focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              )}
               <div className="flex items-center gap-3">
-                <button onClick={toggleSelectAll} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors">
+                <button onClick={toggleSelectAll} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors whitespace-nowrap">
                   {allSelected ? <CheckSquare size={13} className="text-blue-400" /> : <Square size={13} />}
-                  {allSelected ? 'Desmarcar todos' : 'Selecionar todos'}
+                  {allSelected ? 'Desmarcar todos' : 'Todos'}
                 </button>
                 {selected.size > 0 && (
                   <button
                     onClick={importSelected}
                     disabled={importing}
-                    className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold px-4 py-1.5 rounded-lg text-xs transition-colors"
+                    className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold px-4 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap"
                   >
                     {importing ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-                    Inserir {selected.size} zona{selected.size > 1 ? 's' : ''}
+                    Inserir {selected.size}
                   </button>
                 )}
               </div>
@@ -527,7 +533,9 @@ export default function DeliveryZonesPage() {
 
             {cityListExpanded && (
               <div className="border border-gray-700 rounded-xl overflow-hidden max-h-64 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
-                {cityNeighborhoods.map(n => {
+                {visibleNeighborhoods.length === 0 ? (
+                  <p className="text-center py-4 text-gray-600 text-xs">Nenhum bairro para &quot;{neighborhoodSearch}&quot;</p>
+                ) : visibleNeighborhoods.map(n => {
                   const alreadyExists = existingNames.has(n.name.toLowerCase());
                   const isSelected = selected.has(n.id);
                   return (
@@ -692,9 +700,25 @@ export default function DeliveryZonesPage() {
           <Loader2 className="animate-spin text-gray-400" size={32} />
         </div>
       ) : (
-        <div className="flex flex-col gap-6 w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+          {/* Mapa */}
+          <div className="lg:col-span-3 h-[560px] rounded-2xl overflow-hidden border border-gray-800 bg-gray-900 relative order-2 lg:order-1">
+            {drawMode && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[999] bg-gray-900 border border-gray-600 text-gray-200 text-xs font-bold px-4 py-2 rounded-full shadow-lg pointer-events-none">
+                Clique no mapa para adicionar pontos
+              </div>
+            )}
+            <ZoneMap
+              storeLat={storeLat} storeLng={storeLng} zones={mapZones}
+              selectedId={selectedId} onZoneClick={id => { const z = zones.find(x => x.id === id); if (z) startEdit(z); }}
+              drawMode={drawMode} drawPoints={drawPoints} onDrawPoint={handleDrawPoint}
+              previewPolygon={drawMode ? null : polygonDraft} previewColor={form.color}
+              fitBoundsPolygon={viewPolygon}
+            />
+          </div>
+
           {/* ── Tabela de zonas com busca e paginação ── */}
-          <div className="w-full flex flex-col">
+          <div className="lg:col-span-2 flex flex-col order-1 lg:order-2">
             {zones.length === 0 ? (
               <div className="text-center py-16 text-gray-500 bg-gray-900 rounded-2xl border border-gray-800">
                 <Truck size={40} className="mx-auto mb-3 opacity-20" />
@@ -726,12 +750,30 @@ export default function DeliveryZonesPage() {
                   </select>
                 </div>
 
-                {/* Cabeçalho */}
+                {/* Cabeçalho com ordenação */}
                 <div className="flex items-center px-3 py-2 border-b border-gray-800 bg-gray-900/95">
                   <span className="w-5 flex-shrink-0" />
-                  <span className="flex-1 min-w-0 text-[10px] font-bold text-gray-500 uppercase tracking-wide">Zona / Bairro</span>
-                  <span className="w-20 flex-shrink-0 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wide">Frete</span>
-                  <span className="w-16 flex-shrink-0 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wide">Tempo</span>
+                  <button
+                    onClick={() => toggleSort('name')}
+                    className="flex-1 min-w-0 text-left flex items-center gap-1 text-[10px] font-bold text-gray-500 hover:text-gray-300 uppercase tracking-wide transition-colors"
+                  >
+                    Zona / Bairro
+                    {sortCol === 'name' ? (sortDir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />) : <ChevronDown size={10} className="opacity-20" />}
+                  </button>
+                  <button
+                    onClick={() => toggleSort('delivery_fee')}
+                    className="w-20 flex-shrink-0 flex items-center justify-center gap-1 text-[10px] font-bold text-gray-500 hover:text-gray-300 uppercase tracking-wide transition-colors"
+                  >
+                    Frete
+                    {sortCol === 'delivery_fee' ? (sortDir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />) : <ChevronDown size={10} className="opacity-20" />}
+                  </button>
+                  <button
+                    onClick={() => toggleSort('estimated_minutes')}
+                    className="w-16 flex-shrink-0 flex items-center justify-center gap-1 text-[10px] font-bold text-gray-500 hover:text-gray-300 uppercase tracking-wide transition-colors"
+                  >
+                    Tempo
+                    {sortCol === 'estimated_minutes' ? (sortDir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />) : <ChevronDown size={10} className="opacity-20" />}
+                  </button>
                   <span className="w-14 flex-shrink-0 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wide">Status</span>
                   <span className="w-14 flex-shrink-0" />
                 </div>
@@ -755,16 +797,23 @@ export default function DeliveryZonesPage() {
                       </div>
 
                       {/* Nome completo */}
-                      <p
-                        className="flex-1 min-w-0 text-white text-xs font-semibold break-words pr-2 cursor-pointer hover:text-gray-300 transition-colors leading-snug"
+                      <div
+                        className="flex-1 min-w-0 pr-2 cursor-pointer"
                         onClick={() => {
                           const next = selectedId === zone.id ? null : zone.id;
                           setSelectedId(next);
                           setViewPolygon(next ? (zone.polygon ?? null) : null);
                         }}
                       >
-                        {zone.name}
-                      </p>
+                        <p className="text-white text-xs font-semibold break-words hover:text-gray-300 transition-colors leading-snug">
+                          {zone.name}
+                        </p>
+                        {(!zone.polygon || zone.polygon.length < 3) && (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] text-amber-500 font-bold mt-0.5">
+                            <AlertTriangle size={9} /> sem polígono
+                          </span>
+                        )}
+                      </div>
 
                       {/* Frete — inline editável */}
                       <div className="w-20 flex-shrink-0 flex justify-center pt-0.5">
@@ -877,22 +926,6 @@ export default function DeliveryZonesPage() {
 
               </div>
             )}
-          </div>
-
-          {/* Mapa */}
-          <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-gray-800 bg-gray-900 relative">
-            {drawMode && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[999] bg-gray-900 border border-gray-600 text-gray-200 text-xs font-bold px-4 py-2 rounded-full shadow-lg pointer-events-none">
-                Clique no mapa para adicionar pontos
-              </div>
-            )}
-            <ZoneMap
-              storeLat={storeLat} storeLng={storeLng} zones={mapZones}
-              selectedId={selectedId} onZoneClick={id => { const z = zones.find(x => x.id === id); if (z) startEdit(z); }}
-              drawMode={drawMode} drawPoints={drawPoints} onDrawPoint={handleDrawPoint}
-              previewPolygon={drawMode ? null : polygonDraft} previewColor={form.color}
-              fitBoundsPolygon={viewPolygon}
-            />
           </div>
         </div>
       )}

@@ -193,6 +193,26 @@ export interface ScheduledPromotion {
   coupons?: Coupon | null;
 }
 
+/**
+ * Configuração de "Produto do Dia".
+ * Permite destacar produtos na loja com base em uma data específica ou recorrência semanal.
+ */
+export interface DailySpecial {
+  id: string;
+  day_of_week: number | null;    // 0=Dom…6=Sáb — null se for data específica
+  scheduled_date: string | null; // 'YYYY-MM-DD' — null se for recorrente
+  product_id: string;
+  variant_id: string | null;     // null = aplica a todos os sabores
+  discount_type: 'percentage' | 'fixed' | 'none';
+  discount_value: number;
+  highlight_label: string;
+  active: boolean;
+  created_at: string;
+  // joins
+  products?: Product | null;
+  product_variants?: ProductVariant | null;
+}
+
 export interface DeliveryZone {
   id: string;
   name: string;

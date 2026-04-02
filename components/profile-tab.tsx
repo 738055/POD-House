@@ -35,9 +35,14 @@ export default function ProfileTab({ setActiveTab, setIsStoreInfoOpen }: Profile
         </div>
 
         {!user ? (
-          <button onClick={() => router.push('/login')} className="w-full bg-purple-600 text-white font-bold py-4 rounded-xl hover:bg-purple-700 transition-colors">
-            Entrar / Cadastrar
-          </button>
+          <div className="space-y-2">
+            <button onClick={() => router.push('/login')} className="w-full bg-purple-600 text-white font-bold py-4 rounded-xl hover:bg-purple-700 transition-colors">
+              Entrar / Cadastrar
+            </button>
+            <Link href="/forgot-password" className="block text-center text-sm text-purple-600 hover:underline py-1">
+              Esqueceu a senha?
+            </Link>
+          </div>
         ) : (
           isAdmin && (
             <button onClick={() => router.push('/admin')} className="w-full bg-gray-800 text-white font-bold py-4 rounded-xl hover:bg-gray-900 transition-colors">
