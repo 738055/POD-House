@@ -581,34 +581,35 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ── Store header card — mobile only ──────────────────────────────── */}
-      <div className="lg:hidden mx-3 mt-3 bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
-        {/* Cover image */}
+      {/* ── Store header — mobile only ──────────────────────────────────── */}
+      <div className="lg:hidden">
+        {/* Cover full-width */}
         <div className="relative w-full" style={{ aspectRatio: '1280/466' }}>
           <Image src={storeSettings?.cover_url || '/banner.png'} alt="Banner" fill className="object-cover" priority />
         </div>
-        {/* Logo + info */}
-        <div className="relative">
-          {/* Floating logo */}
-          <div className="absolute -top-9 left-1/2 -translate-x-1/2">
-            <div className="w-[72px] h-[72px] rounded-full border-4 border-white overflow-hidden shadow-md bg-white">
+
+        {/* White info card — overlaps cover by 20px, logo floats on top */}
+        <div className="mx-3 -mt-5 bg-white rounded-2xl border border-gray-100 shadow-sm relative z-[1]">
+          {/* Floating logo — positioned above this card, overlapping cover */}
+          <div className="absolute -top-9 left-1/2 -translate-x-1/2 z-10">
+            <div className="w-[72px] h-[72px] rounded-full border-4 border-white overflow-hidden shadow-lg bg-white">
               <Image src={storeSettings?.logo_url || '/logo.png'} alt="Logo" width={72} height={72} className="w-full h-full object-cover" />
             </div>
           </div>
-          <div className="pt-10 pb-4 px-4 text-center">
+          <div className="pt-11 pb-4 px-4 text-center">
             <h1 className="text-lg font-bold text-gray-900 mb-1">{storeSettings?.store_name || 'POD House'}</h1>
-            <div className="flex items-center justify-center gap-1.5 text-gray-500 text-xs mb-1.5">
+            <div className="flex items-center justify-center gap-1.5 text-gray-500 text-xs mb-2">
               <MapPin size={12} className="text-gray-400 flex-shrink-0" />
               <span>{storeSettings?.address_display || 'Londrina - PR'}</span>
               <span className="text-gray-300">•</span>
               <button onClick={() => setIsStoreInfoOpen(true)} className="text-[#0EAD69] font-semibold">Mais informações</button>
             </div>
-            <p className={`text-xs font-bold flex items-center justify-center gap-1 ${storeSettings?.is_open !== false ? 'text-[#0EAD69]' : 'text-red-500'}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${storeSettings?.is_open !== false ? 'bg-[#0EAD69]' : 'bg-red-500'}`} />
+            <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full ${storeSettings?.is_open !== false ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${storeSettings?.is_open !== false ? 'bg-green-500' : 'bg-red-500'}`} />
               {storeSettings?.is_open !== false
                 ? `Aberto${storeSettings?.opening_hours ? ` · ${storeSettings.opening_hours}` : ''}`
                 : 'Fechado no momento'}
-            </p>
+            </span>
           </div>
         </div>
       </div>
