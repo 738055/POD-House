@@ -46,6 +46,7 @@ export default function StockPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
   const [showHistory, setShowHistory] = useState(false);
+  const [historyLimit, setHistoryLimit] = useState(30);
 
   // Modal
   const [modalVariant, setModalVariant] = useState<StockVariant | null>(null);
@@ -68,7 +69,7 @@ export default function StockPage() {
       .from('stock_entries')
       .select('id, type, quantity, cost_per_unit, notes, created_at, product_variants(name, products(name))')
       .order('created_at', { ascending: false })
-      .limit(60);
+      .limit(historyLimit);
     if (data) setEntries(data as unknown as StockEntry[]);
   }
 
@@ -79,6 +80,7 @@ export default function StockPage() {
   }
 
   useEffect(() => { load(); }, []);
+  useEffect(() => { if (showHistory) loadEntries(); }, [historyLimit]);
 
   function openModal(variant: StockVariant) {
     setModalVariant(variant);
@@ -90,8 +92,19 @@ export default function StockPage() {
 
   async function submitEntry() {
     if (!modalVariant || !entryQty) return;
-    setSaving(true);
     const qty = parseInt(entryQty);
+    if (isNaN(qty) || qty <= 0) {
+      toast('Informe uma quantidade válida maior que zero.', 'error');
+      return;
+    }
+    if (entryCost) {
+      const cost = parseFloat(entryCost.replace(',', '.'));
+      if (isNaN(cost) || cost < 0) {
+        toast('Custo unitário inválido.', 'error');
+        return;
+      }
+    }
+    setSaving(true);
     const cost = entryCost ? parseFloat(entryCost.replace(',', '.')) : null;
 
     const { data, error } = await supabase.rpc('add_stock_entry', {
@@ -256,6 +269,16 @@ export default function StockPage() {
               );
             })}
           </div>
+          {entries.length >= historyLimit && (
+            <div className="px-5 py-3 border-t border-gray-800">
+              <button
+                onClick={() => setHistoryLimit(l => l + 30)}
+                className="text-sm text-gray-400 hover:text-white font-semibold transition-colors"
+              >
+                Carregar mais
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -523,7 +546,7 @@ export default function StockPage() {
             <div className="flex gap-3">
               <button
                 onClick={submitEntry}
-                disabled={saving || !entryQty}
+                disabled={saving || !entryQty || parseInt(entryQty) <= 0}
                 className="flex-1 flex items-center justify-center gap-2 bg-white text-black font-black py-3 rounded-xl text-sm hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}

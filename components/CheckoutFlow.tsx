@@ -283,7 +283,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
 
   function canNext(): boolean {
     if (step === 'info')     return name.trim().length > 0 && phone.replace(/\D/g, '').length >= 10;
-    if (step === 'address')  return !!(selectedAddrId || (formAddr.logradouro && formAddr.number && formAddr.cep.length === 8)) && !zoneLoading && !zoneError;
+    if (step === 'address')  return !!(selectedAddrId || (formAddr.logradouro && formAddr.number && formAddr.cep.length === 8)) && !zoneLoading;
     if (step === 'extras')   return true;
     return false;
   }
@@ -325,12 +325,12 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
           <p className="text-gray-400 text-sm mb-6">
             Seu pedido foi salvo e enviado via WhatsApp. O vendedor irá confirmar e você receberá seus pontos de fidelidade!
           </p>
-          <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-6">
-            <div className="flex items-center justify-center gap-2 text-purple-700 mb-1">
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+            <div className="flex items-center justify-center gap-2 text-green-700 mb-1">
               <Star size={16} />
               <span className="font-bold">Pontos de fidelidade</span>
             </div>
-            <p className="text-sm text-purple-600">
+            <p className="text-sm text-green-700">
               Você receberá <strong>{Math.floor(orderSuccess.total)} pontos</strong> quando o vendedor confirmar seu pedido!
             </p>
           </div>
@@ -343,9 +343,9 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end" style={{ maxWidth: '480px', left: 0, right: 0, margin: '0 auto' }}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative w-full bg-white rounded-t-2xl animate-slide-up max-h-[92vh] flex flex-col">
+      <div className="relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl animate-slide-up max-h-[92vh] sm:max-h-[90vh] flex flex-col">
 
         {/* Header */}
         <div className="flex items-center gap-3 p-4 border-b border-gray-100 flex-shrink-0">
@@ -365,7 +365,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
 
         {/* Progress */}
         <div className="h-1 bg-gray-100 flex-shrink-0">
-          <div className="h-full bg-purple-600 transition-all duration-300"
+          <div className="h-full bg-black transition-all duration-300"
             style={{ width: `${((shownIndex + 1) / totalShownSteps) * 100}%` }} />
         </div>
 
@@ -381,14 +381,14 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
               <div>
                 <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Nome completo</label>
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Seu nome"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500" />
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gray-400" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">WhatsApp</label>
                 <input type="tel" value={phone}
                   onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
                   placeholder="(43) 9 9999-9999"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500" />
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gray-400" />
               </div>
               <div className="bg-gray-50 rounded-xl p-3 flex items-start gap-2">
                 <MessageCircle size={16} className="text-green-500 mt-0.5 flex-shrink-0" />
@@ -406,7 +406,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                   {savedAddresses.map(a => (
                     <button key={a.id} onClick={() => { setSelectedAddrId(a.id); setZoneResult(null); setZoneError(null); geocodeAndCheckZone(a.cep); }}
                       className={`w-full flex items-start gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                        selectedAddrId === a.id ? 'border-purple-600 bg-purple-50' : 'border-gray-200'
+                        selectedAddrId === a.id ? 'border-black bg-gray-50' : 'border-gray-200'
                       }`}>
                       <MapPin size={16} className="text-gray-500 mt-0.5 flex-shrink-0" />
                       <div className="min-w-0 flex-1">
@@ -415,7 +415,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                         <p className="text-xs text-gray-500">{a.neighborhood} — {a.city}-{a.uf}</p>
                         <p className="text-xs text-gray-400 font-mono mt-0.5">CEP {a.cep}</p>
                       </div>
-                      {selectedAddrId === a.id && <Check size={16} className="text-purple-600 mt-0.5 flex-shrink-0" />}
+                      {selectedAddrId === a.id && <Check size={16} className="text-black mt-0.5 flex-shrink-0" />}
                     </button>
                   ))}
                   <div className="relative flex items-center gap-2 py-1">
@@ -443,7 +443,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                         }}
                         placeholder="00000-000"
                         maxLength={9}
-                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 pr-10"
+                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gray-400 pr-10"
                       />
                       {(loadingCep || zoneLoading) && (
                         <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />
@@ -504,27 +504,27 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                     <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Rua</label>
                     <input value={formAddr.logradouro} onChange={e => setFormAddr(p => ({ ...p, logradouro: e.target.value }))}
                       placeholder="Rua, Avenida..."
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500" />
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gray-400" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Número</label>
                       <input value={formAddr.number} onChange={e => setFormAddr(p => ({ ...p, number: e.target.value }))}
                         placeholder="123"
-                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500" />
+                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gray-400" />
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Complemento</label>
                       <input value={formAddr.complement} onChange={e => setFormAddr(p => ({ ...p, complement: e.target.value }))}
                         placeholder="Apto, casa..."
-                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500" />
+                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gray-400" />
                     </div>
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Bairro</label>
                     <input value={formAddr.neighborhood} onChange={e => setFormAddr(p => ({ ...p, neighborhood: e.target.value }))}
                       placeholder="Bairro"
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500" />
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gray-400" />
                   </div>
                 </div>
               </div>
@@ -537,7 +537,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
             <div className="space-y-5">
               {/* Resumo do frete para referência */}
               <div className="bg-gray-50 rounded-xl p-3 flex items-center gap-3">
-                <Truck size={16} className="text-purple-500 flex-shrink-0" />
+                <Truck size={16} className="text-[#0EAD69] flex-shrink-0" />
                 <div>
                   <p className="text-xs text-gray-500">Frete</p>
                   <p className="text-sm font-bold text-gray-900">
@@ -559,9 +559,9 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                 <div className="flex gap-2">
                   <input type="text" value={couponCode} onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponResult(null); }}
                     placeholder="CÓDIGO DO CUPOM"
-                    className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono uppercase focus:outline-none focus:border-purple-500" />
+                    className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono uppercase focus:outline-none focus:border-gray-400" />
                   <button onClick={applyCoupon} disabled={loadingCoupon || !couponCode}
-                    className="px-4 py-3 bg-purple-600 text-white text-sm font-bold rounded-xl disabled:opacity-40 flex items-center gap-1">
+                    className="px-4 py-3 bg-black text-white text-sm font-bold rounded-xl disabled:opacity-40 flex items-center gap-1">
                     {loadingCoupon ? <Loader2 size={14} className="animate-spin" /> : 'Aplicar'}
                   </button>
                 </div>
@@ -581,14 +581,14 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                   <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2 block flex items-center gap-1.5">
                     <Star size={12} /> Seus pontos ({profile.points_balance} pts)
                   </label>
-                  <div className={`rounded-xl border-2 p-4 transition-all ${usePoints ? 'border-purple-600' : 'border-gray-200'}`}>
+                  <div className={`rounded-xl border-2 p-4 transition-all ${usePoints ? 'border-black' : 'border-gray-200'}`}>
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <p className="text-sm font-semibold text-gray-800">Usar pontos de fidelidade</p>
                         <p className="text-xs text-gray-500">100 pts = R$ 5,00 de desconto</p>
                       </div>
                       <button onClick={() => { setUsePoints(p => !p); if (!usePoints) setPointsToRedeem(maxPoints); else setPointsToRedeem(0); }}
-                        className={`w-11 h-6 rounded-full transition-colors ${usePoints ? 'bg-purple-600' : 'bg-gray-300'}`}>
+                        className={`w-11 h-6 rounded-full transition-colors ${usePoints ? 'bg-[#0EAD69]' : 'bg-gray-300'}`}>
                         <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform mx-0.5 ${usePoints ? 'translate-x-5' : ''}`} />
                       </button>
                     </div>
@@ -596,7 +596,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                       <div>
                         <input type="range" min={0} max={maxPoints} step={100} value={pointsToRedeem}
                           onChange={e => setPointsToRedeem(Number(e.target.value))}
-                          className="w-full accent-purple-600" />
+                          className="w-full accent-black" />
                         <div className="flex justify-between mt-1">
                           <span className="text-xs text-gray-500">0 pts</span>
                           <span className="text-xs font-bold text-gray-900">{pointsToRedeem} pts = -{fmt(pointsDiscount)}</span>
@@ -657,9 +657,9 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                 </p>
               </div>
 
-              <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 flex items-start gap-2">
-                <Star size={16} className="text-purple-500 mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-purple-700">
+              <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-start gap-2">
+                <Star size={16} className="text-[#0EAD69] mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-green-700">
                   <p className="font-semibold">Programa de fidelidade</p>
                   <p>Após o vendedor confirmar seu pedido, você ganhará <strong>{Math.floor(total)} pontos</strong>!</p>
                 </div>
@@ -679,14 +679,21 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
         {/* Footer */}
         <div className="p-4 border-t border-gray-100 flex-shrink-0">
           {step !== 'summary' ? (
-            <button
-              onClick={nextStep}
-              disabled={!canNext()}
-              className="w-full bg-purple-600 text-white font-bold py-4 rounded-xl disabled:opacity-40 transition-opacity hover:bg-purple-700 flex items-center justify-center gap-2"
-            >
-              {zoneLoading && step === 'address' && <Loader2 size={16} className="animate-spin" />}
-              {zoneLoading && step === 'address' ? 'Verificando área...' : 'Continuar'}
-            </button>
+            <>
+              {zoneError && step === 'address' && (
+                <p className="text-xs text-amber-600 text-center mb-2">
+                  Fora da área padrão — você pode continuar e combinar frete pelo WhatsApp.
+                </p>
+              )}
+              <button
+                onClick={nextStep}
+                disabled={!canNext()}
+                className="w-full bg-black text-white font-bold py-4 rounded-xl disabled:opacity-40 transition-opacity hover:bg-gray-900 flex items-center justify-center gap-2"
+              >
+                {zoneLoading && step === 'address' && <Loader2 size={16} className="animate-spin" />}
+                {zoneLoading && step === 'address' ? 'Verificando área...' : 'Continuar'}
+              </button>
+            </>
           ) : (
             <button onClick={submitOrder} disabled={loading}
               className="w-full bg-green-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 active:opacity-80 hover:bg-green-700">

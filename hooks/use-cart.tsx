@@ -48,7 +48,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         quantity,
         variant_id,
         product_variants!inner (
-          id, name, image_url, price_override,
+          id, name, image_url, price_override, stock,
           products!inner ( id, name, base_price )
         )
       `)
@@ -66,6 +66,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             imageUrl:    v.image_url ?? '',
             unitPrice:   v.price_override ?? p.base_price,
             quantity:    row.quantity,
+            stock:       v.stock ?? 0,
           };
         });
 
@@ -111,13 +112,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   async function addItem(item: Omit<CartItem, 'quantity'>, qty = 1) {
     setItems(prev => {
       const existing = prev.find(i => i.variantId === item.variantId);
+      const currentQty = existing?.quantity ?? 0;
+      const newQty = Math.min(currentQty + qty, item.stock);
+      if (newQty <= currentQty) return prev; // já no limite
       const next = existing
-        ? prev.map(i => i.variantId === item.variantId ? { ...i, quantity: i.quantity + qty } : i)
-        : [...prev, { ...item, quantity: qty }];
+        ? prev.map(i => i.variantId === item.variantId ? { ...i, quantity: newQty } : i)
+        : [...prev, { ...item, quantity: newQty }];
       if (!user) writeLocalCart(next);
       if (user) {
         supabase.from('cart_items')
-          .upsert({ user_id: user.id, variant_id: item.variantId, quantity: existing ? existing.quantity + qty : qty },
+          .upsert({ user_id: user.id, variant_id: item.variantId, quantity: newQty },
                   { onConflict: 'user_id,variant_id' })
           .then();
       }
@@ -137,9 +141,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   async function updateQty(variantId: string, qty: number) {
     if (qty <= 0) return removeItem(variantId);
     setItems(prev => {
-      const next = prev.map(i => i.variantId === variantId ? { ...i, quantity: qty } : i);
+      const item = prev.find(i => i.variantId === variantId);
+      const capped = item ? Math.min(qty, item.stock) : qty;
+      const next = prev.map(i => i.variantId === variantId ? { ...i, quantity: capped } : i);
       if (!user) writeLocalCart(next);
-      if (user) supabase.from('cart_items').upsert({ user_id: user.id, variant_id: variantId, quantity: qty },
+      if (user) supabase.from('cart_items').upsert({ user_id: user.id, variant_id: variantId, quantity: capped },
         { onConflict: 'user_id,variant_id' }).then();
       return next;
     });

@@ -25,15 +25,6 @@ export interface Address {
   created_at: string;
 }
 
-export interface Neighborhood {
-  id: string;
-  name: string;
-  name_normalized: string;
-  cep_prefix: string | null;
-  delivery_fee: number;
-  estimated_minutes: number;
-  active: boolean;
-}
 
 export interface Category {
   id: string;
@@ -159,6 +150,7 @@ export interface CartItem {
   imageUrl: string;
   unitPrice: number;
   quantity: number;
+  stock: number; // estoque disponível no momento em que o item foi adicionado
 }
 
 // Resultado do validate_coupon RPC

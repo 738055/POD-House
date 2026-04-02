@@ -209,6 +209,7 @@ export default function DeliveryZonesPage() {
       color: COLORS[(zones.length + i) % COLORS.length],
       sort_order: zones.length + i,
       active: true,
+      radius_meters: 0,
       polygon: n.polygon,
       polygon_source: 'nominatim',
     }));
@@ -308,6 +309,7 @@ export default function DeliveryZonesPage() {
       color: form.color,
       sort_order: Number(form.sort_order),
       active: form.active,
+      radius_meters: 0,
       polygon: polygonDraft,
       polygon_source: polygonSource,
     };
