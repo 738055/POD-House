@@ -515,7 +515,7 @@ export default function HomePage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const { supabase } = useAuth();
+  const { supabase, user, profile } = useAuth();
   const cart = useCart();
 
   useEffect(() => {
@@ -583,14 +583,10 @@ export default function HomePage() {
 
       {/* ── Store header — mobile only ──────────────────────────────────── */}
       <div className="lg:hidden">
-        {/* Cover full-width */}
         <div className="relative w-full" style={{ aspectRatio: '1280/466' }}>
           <Image src={storeSettings?.cover_url || '/banner.png'} alt="Banner" fill className="object-cover" priority />
         </div>
-
-        {/* White info card — overlaps cover by 20px, logo floats on top */}
         <div className="mx-3 -mt-5 bg-white rounded-2xl border border-gray-100 shadow-sm relative z-[1]">
-          {/* Floating logo — positioned above this card, overlapping cover */}
           <div className="absolute -top-9 left-1/2 -translate-x-1/2 z-10">
             <div className="w-[72px] h-[72px] rounded-full border-4 border-white overflow-hidden shadow-lg bg-white">
               <Image src={storeSettings?.logo_url || '/logo.png'} alt="Logo" width={72} height={72} className="w-full h-full object-cover" />
@@ -608,7 +604,7 @@ export default function HomePage() {
               <span className={`w-1.5 h-1.5 rounded-full ${storeSettings?.is_open !== false ? 'bg-green-500' : 'bg-red-500'}`} />
               {storeSettings?.is_open !== false
                 ? `Aberto${storeSettings?.opening_hours ? ` · ${storeSettings.opening_hours}` : ''}`
-                : 'Fechado no momento'}
+                : `Fechado · Abrimos às ${storeSettings?.opening_hours || '09h30'}`}
             </span>
           </div>
         </div>
@@ -660,72 +656,90 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ── Desktop layout: sidebar + content ───────────────────────────── */}
-      <div className="lg:flex lg:gap-8 lg:mt-2">
-
-        {/* Desktop sidebar — categories */}
-        <aside className="hidden lg:block w-52 flex-shrink-0">
-          {/* Store info card */}
-          <div className="bg-white rounded-2xl p-4 border border-gray-200 mb-4 shadow-sm">
-            <div className="flex items-center gap-2 mb-2">
-              <p className={`text-xs font-bold flex items-center gap-1 ${storeSettings?.is_open !== false ? 'text-green-500' : 'text-red-400'}`}>
-                <Clock size={11} />
-                {storeSettings?.is_open !== false ? 'Aberto' : 'Fechado'}
-              </p>
-              {storeSettings?.opening_hours && (
-                <span className="text-xs text-gray-400">{storeSettings.opening_hours}</span>
-              )}
+      {/* ── Desktop: store section (banner + info) ───────────────────────── */}
+      <div className="hidden lg:block -mx-8">
+        <div className="relative w-full" style={{ aspectRatio: '1280/380' }}>
+          <Image src={storeSettings?.cover_url || '/banner.png'} alt="Banner" fill className="object-cover" priority />
+        </div>
+        <div className="bg-white border-b border-gray-200">
+          <div className="px-8 py-4 flex items-end gap-4">
+            <div className="-mt-10 flex-shrink-0 relative z-10">
+              <div className="w-20 h-20 rounded-2xl border-4 border-white overflow-hidden shadow-lg bg-white">
+                <Image src={storeSettings?.logo_url || '/logo.png'} alt="Logo" width={80} height={80} className="w-full h-full object-cover" />
+              </div>
             </div>
-            {storeSettings?.address_display && (
-              <p className="text-xs text-gray-500 flex items-start gap-1">
-                <MapPin size={11} className="mt-0.5 flex-shrink-0" />
-                {storeSettings.address_display}
-              </p>
-            )}
-            <button onClick={() => setIsStoreInfoOpen(true)} className="text-xs text-[#0EAD69] font-medium mt-2 hover:underline">
-              Ver mais informações
-            </button>
-          </div>
-
-          {/* Loyalty card */}
-          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-1">
-              <Gift size={14} className="text-amber-500" />
-              <p className="text-xs font-bold text-amber-700">Fidelidade</p>
+            <div className="flex-1 pb-1 min-w-0">
+              <h1 className="text-xl font-bold text-gray-900">{storeSettings?.store_name || 'POD House'}</h1>
+              <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-0.5 flex-wrap">
+                <MapPin size={13} className="text-gray-400 flex-shrink-0" />
+                <span>{storeSettings?.address_display || 'Londrina - PR'}</span>
+                <span className="text-gray-300">•</span>
+                <button onClick={() => setIsStoreInfoOpen(true)} className="text-[#0EAD69] font-semibold hover:underline flex-shrink-0">
+                  Mais informações
+                </button>
+              </div>
             </div>
-            <p className="text-xs text-amber-600 leading-relaxed">R$ 1 = 1 ponto · troque por prêmios</p>
+            <div className="pb-1 flex-shrink-0">
+              <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${storeSettings?.is_open !== false ? 'text-green-700' : 'text-red-600'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${storeSettings?.is_open !== false ? 'bg-green-500' : 'bg-red-500'}`} />
+                {storeSettings?.is_open !== false
+                  ? `Aberto${storeSettings?.opening_hours ? ` · ${storeSettings.opening_hours}` : ''}`
+                  : `Fechado · Abrimos às ${storeSettings?.opening_hours || '09h30'}`}
+              </span>
+            </div>
           </div>
+        </div>
+      </div>
 
-          {/* Categories list */}
-          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 px-1">Categorias</p>
-          <div className="space-y-0.5">
-            <button onClick={() => setSelectedCategory(null)}
-              className={`w-full text-left px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${!selectedCategory ? 'bg-black text-white' : 'text-gray-600 hover:bg-white hover:shadow-sm'}`}>
-              Todos os produtos
-            </button>
-            {categories.map(cat => (
-              <button key={cat.id} onClick={() => setSelectedCategory(cat.id)}
-                className={`w-full text-left px-3 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 ${selectedCategory === cat.id ? 'bg-black text-white' : 'text-gray-600 hover:bg-white hover:shadow-sm'}`}>
-                {cat.image_url && (
-                  <div className="w-5 h-5 rounded overflow-hidden flex-shrink-0">
-                    <Image src={cat.image_url} alt="" width={20} height={20} className="w-full h-full object-contain" />
-                  </div>
-                )}
-                <span className="truncate">{cat.name}</span>
-              </button>
-            ))}
-          </div>
-        </aside>
+      {/* ── Desktop: sticky sub-header (categories + search) ────────────── */}
+      <div className="hidden lg:flex sticky top-16 z-30 -mx-8 bg-white border-b border-gray-100 shadow-sm items-center gap-3 px-8 py-3">
+        <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 border border-gray-100 bg-gray-50">
+          <Image src={storeSettings?.logo_url || '/logo.png'} alt="Logo" width={32} height={32} className="w-full h-full object-cover" />
+        </div>
+        <button onClick={() => setIsCategoryDropdownOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex-shrink-0">
+          <span className="max-w-[160px] truncate">{selectedCategoryName}</span>
+          <ChevronDown size={14} className="text-gray-400" />
+        </button>
+        <div className="flex-1 relative max-w-lg">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Busque por um produto"
+            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-300 focus:bg-white transition-colors" />
+        </div>
+      </div>
 
-        {/* Main content area */}
+      {/* ── Main layout: content + right sidebar ─────────────────────────── */}
+      <div className="lg:flex lg:gap-6 lg:mt-6">
+
+        {/* Content area */}
         <div className="flex-1 min-w-0">
 
           {/* Promotions */}
           {!searchQuery && !selectedCategory && promotions.length > 0 && (
-            <div className="px-4 lg:px-0 mb-6">
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <>
+              {/* Mobile: horizontal scroll */}
+              <div className="mb-4 lg:hidden overflow-x-auto no-scrollbar">
+                <div className="flex gap-3 px-3 pb-1" style={{ width: 'max-content' }}>
+                  {promotions.map(promo => (
+                    <div key={promo.id} onClick={() => setSelectedPromo(promo)}
+                      className="cursor-pointer rounded-xl overflow-hidden shadow-sm w-[190px] flex-shrink-0">
+                      <div className="relative" style={{ aspectRatio: '4/3' }}>
+                        <Image src={promo.image_url || '/banner.png'} alt={promo.title} fill className="object-cover" />
+                      </div>
+                      <div className="p-2.5 bg-white border border-gray-100 border-t-0 rounded-b-xl">
+                        <h3 className="font-bold text-gray-900 text-xs leading-tight uppercase line-clamp-2">{promo.title}</h3>
+                        <p className="text-gray-500 text-[10px] mt-1 line-clamp-2 leading-tight">{promo.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Desktop: 3-col grid */}
+              <div className="hidden lg:grid grid-cols-3 gap-3 mb-6">
                 {promotions.map(promo => (
-                  <div key={promo.id} onClick={() => setSelectedPromo(promo)} className="cursor-pointer rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                  <div key={promo.id} onClick={() => setSelectedPromo(promo)}
+                    className="cursor-pointer rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                     <div className="relative" style={{ aspectRatio: '4/3' }}>
                       <Image src={promo.image_url || '/banner.png'} alt={promo.title} fill className="object-cover" />
                     </div>
@@ -736,63 +750,76 @@ export default function HomePage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </>
           )}
 
-          {/* Featured Products */}
+          {/* Featured products (Destaques) */}
           {!searchQuery && !selectedCategory && featuredProducts.length > 0 && (
-            <div className="px-4 lg:px-0 mb-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-3">Destaques</h2>
-              {loading ? (
-                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {[1, 2, 3, 4].map(i => <div key={i} className="bg-gray-100 rounded-xl aspect-square animate-pulse" />)}
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {featuredProducts.map(product => <ProductCard key={product.id} product={product} onOpen={handleOpenProduct} />)}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Categories horizontal scroll — mobile only */}
-          {!searchQuery && !selectedCategory && (
-            <div className="mb-6 lg:hidden">
-              <div className="px-4 mb-3"><h2 className="text-lg font-bold text-gray-900">Categorias</h2></div>
-              <div className="overflow-x-auto no-scrollbar">
-                <div className="flex gap-2 px-4 pb-2" style={{ width: 'max-content' }}>
-                  {categories.slice(0, 12).map(cat => (
-                    <div key={cat.id} onClick={() => setSelectedCategory(cat.id)} className="flex flex-col items-center gap-2 cursor-pointer p-2 rounded-xl hover:bg-gray-50">
-                      <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-gray-200">
-                        <Image src={cat.image_url || '/logo.png'} alt={cat.name} width={64} height={64} className="w-full h-full object-contain bg-gray-50 p-1" />
+            <>
+              {/* Mobile: horizontal scroll */}
+              <div className="mb-6 lg:hidden">
+                <div className="px-3 mb-3"><h2 className="text-lg font-bold text-gray-900">Destaques</h2></div>
+                <div className="overflow-x-auto no-scrollbar">
+                  <div className="flex gap-3 px-3 pb-2" style={{ width: 'max-content' }}>
+                    {featuredProducts.map(product => (
+                      <div key={product.id} className="w-[155px] flex-shrink-0">
+                        <ProductCard product={product} onOpen={handleOpenProduct} />
                       </div>
-                      <p className="text-xs text-center font-medium leading-tight text-gray-700 w-16 line-clamp-2">{cat.name.split(' ').slice(0, 3).join(' ')}</p>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+              {/* Desktop: grid */}
+              <div className="hidden lg:block mb-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-3">Destaques</h2>
+                {loading ? (
+                  <div className="grid grid-cols-3 xl:grid-cols-4 gap-3">
+                    {[1, 2, 3, 4].map(i => <div key={i} className="bg-gray-100 rounded-xl aspect-square animate-pulse" />)}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 xl:grid-cols-4 gap-3">
+                    {featuredProducts.map(product => <ProductCard key={product.id} product={product} onOpen={handleOpenProduct} />)}
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
-          {/* All products (desktop default) */}
+          {/* Categories / All products */}
           {!searchQuery && !selectedCategory && (
-            <div className="hidden lg:block px-0 mb-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-3">Todos os produtos</h2>
-              {loading ? (
-                <div className="grid grid-cols-3 xl:grid-cols-4 gap-3">
-                  {[1, 2, 3, 4].map(i => <div key={i} className="bg-gray-100 rounded-xl aspect-square animate-pulse" />)}
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 xl:grid-cols-4 gap-3">
-                  {allProducts.map(product => <ProductCard key={product.id} product={product} onOpen={handleOpenProduct} />)}
-                </div>
-              )}
-            </div>
+            <>
+              {/* Mobile: 2-col product grid */}
+              <div className="px-3 mb-6 lg:hidden">
+                <h2 className="text-lg font-bold text-gray-900 mb-3">Categorias</h2>
+                {loading ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {[1, 2, 3, 4].map(i => <div key={i} className="bg-gray-100 rounded-xl aspect-square animate-pulse" />)}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {allProducts.map(product => <ProductCard key={product.id} product={product} onOpen={handleOpenProduct} />)}
+                  </div>
+                )}
+              </div>
+              {/* Desktop: 4-col product grid */}
+              <div className="hidden lg:block mb-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-3">Categorias</h2>
+                {loading ? (
+                  <div className="grid grid-cols-3 xl:grid-cols-4 gap-3">
+                    {[1, 2, 3, 4].map(i => <div key={i} className="bg-gray-100 rounded-xl aspect-square animate-pulse" />)}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 xl:grid-cols-4 gap-3">
+                    {allProducts.map(product => <ProductCard key={product.id} product={product} onOpen={handleOpenProduct} />)}
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           {/* Search / Category Results */}
           {(searchQuery || selectedCategory) && (
-            <div className="px-4 lg:px-0 mb-6">
+            <div className="px-3 lg:px-0 mb-6">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-base font-bold text-gray-900">
                   {searchQuery ? `"${searchQuery}"` : selectedCategoryName.split(' ').slice(0, 4).join(' ')}
@@ -817,8 +844,105 @@ export default function HomePage() {
             </div>
           )}
 
-        </div>{/* end main content */}
-      </div>{/* end desktop flex */}
+        </div>{/* end content area */}
+
+        {/* ── Desktop right sidebar ─────────────────────────────────────── */}
+        <aside className="hidden lg:block w-72 flex-shrink-0">
+          <div className="sticky top-[120px] space-y-3">
+
+            {/* Loyalty program */}
+            <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center flex-shrink-0">
+                  <Gift size={18} className="text-white" />
+                </div>
+                <h3 className="font-bold text-gray-900 text-sm">Programa de fidelidade</h3>
+              </div>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                A cada <strong>R$ 1,00</strong> em compras você ganha <strong>1 ponto</strong> que pode ser trocado por prêmios.
+              </p>
+            </div>
+
+            {/* Delivery calc */}
+            <button onClick={() => setIsDeliveryOpen(true)}
+              className="w-full flex items-center justify-between bg-white rounded-2xl px-4 py-4 border border-gray-100 shadow-sm hover:bg-gray-50 transition-colors text-left">
+              <div className="flex items-center gap-3">
+                <MapPin size={18} className="text-gray-500 flex-shrink-0" />
+                <span className="text-sm font-medium text-gray-800">Calcular taxa e tempo de entrega</span>
+              </div>
+              <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
+            </button>
+
+            {/* Cart (sacola) */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              {cart.totalItems === 0 ? (
+                <div className="flex flex-col items-center py-8 text-center px-4">
+                  <ShoppingBag size={52} className="text-gray-200 mb-2" />
+                  <p className="text-gray-500 font-semibold text-sm">Sacola vazia</p>
+                </div>
+              ) : (
+                <div>
+                  <div className="p-4 space-y-3 max-h-60 overflow-y-auto">
+                    {cart.items.map(item => (
+                      <div key={item.variantId} className="flex items-center gap-2">
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
+                          <Image src={item.imageUrl || '/logo.png'} alt={item.productName} width={40} height={40} className="w-full h-full object-contain p-1" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-gray-900 line-clamp-1">{item.productName}</p>
+                          <p className="text-xs text-[#0EAD69] font-medium">{formatCurrency(item.unitPrice)}</p>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button onClick={() => cart.updateQty(item.variantId, item.quantity - 1)} className="w-6 h-6 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-100"><Minus size={10} /></button>
+                          <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
+                          <button onClick={() => cart.updateQty(item.variantId, item.quantity + 1)} disabled={item.quantity >= item.stock} className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center disabled:bg-gray-200 disabled:cursor-not-allowed"><Plus size={10} /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="px-4 pb-4 pt-3 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm text-gray-600 font-medium">Total</span>
+                      <span className="font-bold text-gray-900">{formatCurrency(cart.totalPrice)}</span>
+                    </div>
+                    <button onClick={() => setIsCheckoutOpen(true)} className="w-full bg-black text-white font-bold py-3 rounded-xl text-sm hover:bg-gray-800 transition-colors">
+                      Finalizar Pedido
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Coupon */}
+            {showCouponBanner && (
+              <button className="w-full flex items-center justify-between bg-white rounded-2xl px-4 py-4 border border-gray-100 shadow-sm hover:bg-gray-50 transition-colors text-left">
+                <div className="flex items-center gap-3">
+                  <Ticket size={18} className="text-gray-500 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">Que tal usar um cupom?</p>
+                    <p className="text-xs text-[#0EAD69] font-medium">1 disponível</p>
+                  </div>
+                </div>
+                <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
+              </button>
+            )}
+
+            {/* Store status button */}
+            <button
+              disabled={storeSettings?.is_open === false}
+              onClick={() => storeSettings?.is_open !== false && setIsCheckoutOpen(true)}
+              className={`w-full py-4 rounded-2xl font-bold text-sm transition-colors ${
+                storeSettings?.is_open !== false
+                  ? 'bg-[#0EAD69] text-white hover:bg-green-600 cursor-pointer'
+                  : 'bg-gray-200 text-gray-500 cursor-default'
+              }`}>
+              {storeSettings?.is_open !== false ? 'Estabelecimento aberto' : 'Estabelecimento fechado'}
+            </button>
+
+          </div>
+        </aside>
+
+      </div>{/* end main layout flex */}
     </div>
   );
 
@@ -867,21 +991,13 @@ export default function HomePage() {
 
       {/* ── Desktop Header (lg+) ─────────────────────────────────────────── */}
       <header className="hidden lg:flex fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-100 shadow-sm h-16 items-center">
-        <div className="max-w-7xl mx-auto w-full flex items-center gap-4 px-8">
+        <div className="max-w-7xl mx-auto w-full flex items-center gap-1 px-8">
 
-          {/* Logo + nome */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="w-9 h-9 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
-              <Image src={storeSettings?.logo_url || '/logo.png'} alt="Logo" width={36} height={36} className="w-full h-full object-cover" />
-            </div>
-            <span className="font-black text-base text-gray-900 tracking-tight">{storeSettings?.store_name || 'POD House'}</span>
-          </div>
-
-          {/* Nav tabs */}
-          <nav className="flex items-center gap-0.5 ml-6">
-            {NAV_TABS.map(tab => (
+          {/* Nav tabs — Início, Promoções, Pedidos */}
+          <nav className="flex items-center gap-0.5">
+            {NAV_TABS.slice(0, 3).map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
                   activeTab === tab.id ? 'bg-black text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                 }`}>
                 <tab.icon size={15} />
@@ -890,48 +1006,21 @@ export default function HomePage() {
             ))}
           </nav>
 
-          {/* Search */}
-          <div className="flex-1 max-w-sm relative ml-auto">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              value={searchQuery}
-              onChange={e => { setSearchQuery(e.target.value); setActiveTab('inicio'); }}
-              placeholder="Buscar produto..."
-              className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-400 bg-gray-50"
-            />
-          </div>
+          <div className="flex-1" />
 
-          {/* Entrega */}
-          <button onClick={() => setIsDeliveryOpen(true)}
-            className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors flex-shrink-0">
-            <Bike size={16} className="text-[#0EAD69]" />
-            Calcular entrega
-          </button>
-
-          {/* Cart */}
-          <button onClick={() => setIsCartOpen(true)}
-            className="relative flex items-center gap-2 bg-black text-white px-4 py-2 rounded-xl text-sm font-bold flex-shrink-0 hover:bg-gray-800 transition-colors">
-            <ShoppingBag size={16} />
-            {cart.totalItems > 0 ? (
-              <>
-                <span>{cart.totalItems} {cart.totalItems === 1 ? 'item' : 'itens'}</span>
-                <span className="text-gray-400">·</span>
-                <span>{formatCurrency(cart.totalPrice)}</span>
-              </>
-            ) : (
-              <span>Carrinho</span>
-            )}
-            {cart.totalItems > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
-                {cart.totalItems}
-              </span>
-            )}
+          {/* User / Entrar */}
+          <button onClick={() => setActiveTab('perfil')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+              activeTab === 'perfil' ? 'bg-black text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+            }`}>
+            <User size={15} />
+            {user ? (profile?.full_name?.split(' ')[0] || 'Perfil') : 'Entrar/Cadastrar'}
           </button>
         </div>
       </header>
 
       {/* ── Main content ─────────────────────────────────────────────────── */}
-      <main className="max-w-2xl mx-auto lg:max-w-7xl lg:px-8 lg:pt-20">
+      <main className="max-w-2xl mx-auto lg:max-w-7xl lg:px-8 lg:pt-16">
         {activeTab === 'inicio' && renderInicio()}
         {activeTab === 'promocoes' && renderPromocoes()}
         {activeTab === 'pedidos' && renderPedidos()}

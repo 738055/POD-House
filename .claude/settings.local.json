@@ -11,7 +11,10 @@
       "Bash(node:*)",
       "Bash(npx tsc:*)",
       "Bash(node_modules/.bin/next build:*)",
-      "WebFetch(domain:podhousedelivery.com.br)"
+      "WebFetch(domain:podhousedelivery.com.br)",
+      "Bash(wc:*)",
+      "Bash(node_modules/.bin/tsc:*)",
+      "Bash(cmd:*)"
     ]
   }
 }
