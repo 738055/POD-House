@@ -51,6 +51,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
   // Step info
   const [name, setName]     = useState('');
   const [phone, setPhone]   = useState('');
+  const [email, setEmail]   = useState('');
 
   // Step address
   const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
@@ -91,6 +92,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
       if (user) {
         setName(profile?.full_name ?? '');
         setPhone(profile?.phone ?? '');
+        setEmail(user.email ?? '');
       }
     }
   }, [isOpen, user, profile]);
@@ -199,6 +201,22 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
     setLoading(true);
     setError(null);
 
+    let finalUserId = user?.id ?? null;
+
+    // Cadastro silencioso se for visitante e tiver e-mail
+    if (!finalUserId && email) {
+      const { data: authData } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: Math.random().toString(36).slice(-10) + 'Aa1@', // Senha forte aleatória
+        options: {
+          data: { full_name: name.trim(), phone: phone.replace(/\D/g, '') }
+        }
+      });
+      if (authData?.user) {
+        finalUserId = authData.user.id;
+      }
+    }
+
     const addr: FormAddress = selectedAddrId
       ? (() => {
           const a = savedAddresses.find(x => x.id === selectedAddrId)!;
@@ -216,7 +234,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
     }));
 
     const { data, error: rpcError } = await (supabase.rpc as any)('place_order', {
-      p_user_id:          user?.id ?? null,
+      p_user_id:          finalUserId,
       p_address:          addr,
       p_items:            orderItems,
       p_delivery_fee:     deliveryFee,
@@ -282,7 +300,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
   const totalShownSteps = stepsToShow.length;
 
   function canNext(): boolean {
-    if (step === 'info')     return name.trim().length > 0 && phone.replace(/\D/g, '').length >= 10;
+    if (step === 'info')     return name.trim().length > 0 && phone.replace(/\D/g, '').length >= 10 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (step === 'address')  return !!(selectedAddrId || (formAddr.logradouro && formAddr.number && formAddr.cep.length === 8)) && !zoneLoading;
     if (step === 'extras')   return true;
     return false;
@@ -388,6 +406,11 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                 <input type="tel" value={phone}
                   onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
                   placeholder="(43) 9 9999-9999"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gray-400" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">E-mail</label>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com"
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gray-400" />
               </div>
               <div className="bg-gray-50 rounded-xl p-3 flex items-start gap-2">

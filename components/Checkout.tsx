@@ -6,10 +6,12 @@ import { X, Send, MapPin, User, Phone, CreditCard } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { createClient } from '@/lib/supabase/client';
 
 const checkoutSchema = z.object({
   name: z.string().min(3, 'Nome muito curto'),
   phone: z.string().min(10, 'Telefone inválido'),
+  email: z.string().email('E-mail inválido'),
   cep: z.string().min(8, 'CEP inválido'),
   logradouro: z.string().min(5, 'Endereço muito curto'),
   number: z.string().min(1, 'Número obrigatório'),
@@ -55,7 +57,23 @@ export default function Checkout({ isOpen, onClose, items, total }: CheckoutProp
     }
   };
 
-  const onSubmit = (data: CheckoutFormData) => {
+  const onSubmit = async (data: CheckoutFormData) => {
+    setLoading(true);
+    
+    // Cadastro silencioso
+    try {
+      const supabase = createClient();
+      await supabase.auth.signUp({
+        email: data.email,
+        password: Math.random().toString(36).slice(-10) + 'Aa1@', // Senha forte
+        options: { 
+          data: { full_name: data.name, phone: data.phone.replace(/\D/g, '') } 
+        }
+      });
+    } catch (e) {
+      console.error('Falha no cadastro silencioso', e);
+    }
+
     const message = `*NOVO PEDIDO!* 🍔\n\n` +
       `*Cliente:* ${data.name}\n` +
       `*Telefone:* ${data.phone}\n\n` +
@@ -74,6 +92,7 @@ export default function Checkout({ isOpen, onClose, items, total }: CheckoutProp
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://api.whatsapp.com/send?phone=5511999999999&text=${encodedMessage}`;
     window.open(whatsappUrl, '_blank');
+    setLoading(false);
   };
 
   return (
@@ -129,6 +148,16 @@ export default function Checkout({ isOpen, onClose, items, total }: CheckoutProp
                       placeholder="(11) 99999-9999"
                     />
                     {errors.phone && <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest ml-1">{errors.phone.message}</p>}
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">E-mail</label>
+                    <input 
+                      type="email"
+                      {...register('email')}
+                      className="w-full p-4 bg-background rounded-2xl border border-border focus:border-primary outline-none transition-all text-sm font-bold text-white placeholder:text-gray-700"
+                      placeholder="seu@email.com"
+                    />
+                    {errors.email && <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest ml-1">{errors.email.message}</p>}
                   </div>
                 </div>
               </section>
@@ -220,8 +249,8 @@ export default function Checkout({ isOpen, onClose, items, total }: CheckoutProp
                   type="submit"
                   className="w-full btn-primary py-5 text-xs uppercase tracking-[0.2em] font-black flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(255,215,0,0.2)] active:scale-95 transition-transform"
                 >
-                  <Send size={18} />
-                  Enviar Pedido pelo WhatsApp
+                  {loading ? <span className="animate-spin text-xl">↻</span> : <Send size={18} />}
+                  {loading ? 'Processando...' : 'Enviar Pedido pelo WhatsApp'}
                 </button>
               </div>
             </form>

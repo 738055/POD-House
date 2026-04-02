@@ -5,7 +5,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { User, Star, ShoppingBag, Gift, MapPin, Info, ChevronRight, LogOut } from 'lucide-react';
 
-export default function ProfileTab() {
+interface ProfileTabProps {
+  setActiveTab?: (tab: string) => void;
+  setIsStoreInfoOpen?: (isOpen: boolean) => void;
+}
+
+export default function ProfileTab({ setActiveTab, setIsStoreInfoOpen }: ProfileTabProps = {}) {
   const { user, profile, isAdmin, signOut, loading } = useAuth();
   const router = useRouter();
 
@@ -52,10 +57,10 @@ export default function ProfileTab() {
 
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
           {[
-            { icon: ShoppingBag, label: 'Meus Pedidos', action: () => {} /* setActiveTab('pedidos') */ },
-            { icon: Gift, label: 'Cupons Disponíveis', action: () => {} },
-            { icon: MapPin, label: 'Meus Endereços', action: () => {} },
-            { icon: Info, label: 'Sobre a Loja', action: () => {} /* setIsStoreInfoOpen(true) */ },
+            { icon: ShoppingBag, label: 'Meus Pedidos', action: () => setActiveTab ? setActiveTab('pedidos') : router.push('/pedidos') },
+            { icon: Gift, label: 'Cupons Disponíveis', action: () => router.push('/cupons') },
+            { icon: MapPin, label: 'Meus Endereços', action: () => router.push('/enderecos') },
+            { icon: Info, label: 'Sobre a Loja', action: () => setIsStoreInfoOpen ? setIsStoreInfoOpen(true) : router.push('/sobre') },
           ].map((item, index, arr) => (
             <button key={item.label} onClick={item.action} className={`w-full flex items-center gap-3 px-4 py-4 hover:bg-gray-50 transition-colors ${index < arr.length - 1 ? 'border-b border-gray-100' : ''}`}>
               <div className="w-9 h-9 bg-purple-100 rounded-full flex items-center justify-center"><item.icon size={18} className="text-purple-600" /></div>
