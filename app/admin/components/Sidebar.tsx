@@ -70,6 +70,7 @@ export function Sidebar({ setMobileOpen, signOut }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               onClick={() => setMobileOpen(false)}
               className={cn(
                 "flex items-center justify-between px-4 py-3.5 rounded-2xl transition-all duration-300 group relative overflow-hidden",

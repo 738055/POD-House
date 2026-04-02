@@ -391,14 +391,18 @@ export default function AdminProductsPage() {
                         <tr key={product.id} className={cn('group hover:bg-purple-600/5 transition-colors', !product.active && 'opacity-60')}>
                           <td className="px-5 py-3.5">
                             <div className="flex items-center gap-3">
-                              <div className="relative w-11 h-11 rounded-xl bg-gray-800 overflow-hidden border border-gray-700/50 shrink-0">
-                                <Image
-                                  src={product.product_variants[0]?.image_url || '/logo.png'}
-                                  alt={product.name}
-                                  fill
-                                  className="object-contain p-1"
-                                  unoptimized
-                                />
+                              <div className="relative w-11 h-11 rounded-xl bg-gray-800 overflow-hidden border border-gray-700/50 shrink-0 flex items-center justify-center">
+                                {product.product_variants[0]?.image_url ? (
+                                  <Image
+                                    src={product.product_variants[0].image_url}
+                                    alt={product.name}
+                                    fill
+                                    className="object-contain p-1"
+                                    unoptimized
+                                  />
+                                ) : (
+                                  <Package size={20} className="text-gray-600" />
+                                )}
                               </div>
                               <div className="min-w-0">
                                 <p className="font-bold text-white text-sm truncate group-hover:text-purple-400 transition-colors">
@@ -477,8 +481,12 @@ export default function AdminProductsPage() {
                 return (
                   <Card key={product.id} padding="none" className={cn('group', !product.active && 'opacity-60')}>
                     <div className="p-4 flex items-center gap-3">
-                      <div className="relative w-14 h-14 rounded-xl bg-gray-800 overflow-hidden border border-gray-700/50 shrink-0">
-                        <Image src={product.product_variants[0]?.image_url || '/logo.png'} alt={product.name} fill className="object-contain p-1.5" unoptimized />
+                      <div className="relative w-14 h-14 rounded-xl bg-gray-800 overflow-hidden border border-gray-700/50 shrink-0 flex items-center justify-center">
+                        {product.product_variants[0]?.image_url ? (
+                          <Image src={product.product_variants[0].image_url} alt={product.name} fill className="object-contain p-1.5" unoptimized />
+                        ) : (
+                          <Package size={24} className="text-gray-600" />
+                        )}
                       </div>
                       <div className="flex-grow min-w-0">
                         <h3 className="font-bold text-white text-sm truncate">{product.name}</h3>

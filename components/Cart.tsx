@@ -65,14 +65,18 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, onRemov
               ) : (
                 items.map((item) => (
                   <div key={item.variationId} className="flex gap-4 items-center">
-                    <div className="relative w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 bg-surface-hover border border-border">
-                      <Image
-                        src={item.imageUrl || 'https://picsum.photos/seed/pod/200/200'}
-                        alt={item.name}
-                        fill
-                        className="object-cover"
-                        referrerPolicy="no-referrer"
-                      />
+                    <div className="relative w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 bg-surface-hover border border-border flex items-center justify-center">
+                      {item.imageUrl ? (
+                        <Image
+                          src={item.imageUrl}
+                          alt={item.name}
+                          fill
+                          className="object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <ShoppingBag size={24} className="text-gray-600" />
+                      )}
                     </div>
                     <div className="flex-grow">
                       <h4 className="font-bold text-sm line-clamp-1 text-white uppercase tracking-tight">{item.name}</h4>
