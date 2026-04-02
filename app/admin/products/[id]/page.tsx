@@ -16,7 +16,7 @@ import Image from 'next/image';
 import { ImageUpload } from '../../components/ImageUpload';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 const variantSchema = z.object({
@@ -167,10 +167,6 @@ export default function EditProductPage() {
     } finally {
       setIsSubmitting(false);
     }
-  }
-
-  function formatCurrency(value: number): string {
-    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 
   if (loadingData) {

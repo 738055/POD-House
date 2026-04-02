@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { StatusToggle } from '../components/StatusToggle';
@@ -31,9 +31,6 @@ type ProductForAdminList = {
 
 const PAGE_SIZE = 20;
 
-function formatCurrency(value: number): string {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
 
 export default function AdminProductsPage() {
   const { supabase } = useAuth();

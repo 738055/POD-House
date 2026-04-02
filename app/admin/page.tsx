@@ -8,6 +8,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line,
 } from 'recharts';
 import { TrendingUp, ShoppingBag } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 type DashboardStats = {
   orders_count: number;
@@ -21,9 +22,6 @@ type DayData = {
   pedidos: number;
   receita: number;
 };
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;

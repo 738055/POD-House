@@ -4,21 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { ChevronDown, RefreshCw, MessageCircle, CheckCircle, Star, Loader2, AlertCircle, Bell } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pendente', confirmed: 'Confirmado', preparing: 'Preparando',
-  out_for_delivery: 'Saiu p/ entrega', delivered: 'Entregue', cancelled: 'Cancelado',
-};
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-yellow-500/20 text-yellow-400',
-  confirmed: 'bg-blue-500/20 text-blue-400',
-  preparing: 'bg-orange-500/20 text-orange-400',
-  out_for_delivery: 'bg-purple-500/20 text-purple-400',
-  delivered: 'bg-green-500/20 text-green-400',
-  cancelled: 'bg-red-500/20 text-red-400',
-};
-
-function fmt(v: number) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+import { STATUS_LABELS, STATUS_COLORS } from '@/app/admin/lib/constants';
+import { formatCurrency as fmt } from '@/lib/utils';
 
 export default function OrdersPage() {
   const supabase = createClient();
