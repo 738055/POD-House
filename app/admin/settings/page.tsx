@@ -74,13 +74,14 @@ export default function SettingsPage() {
   }, [supabase]);
 
   async function save() {
+    if (!supabase) { setError('Cliente Supabase não inicializado.'); return; }
     setSaving(true);
     setError(null);
     setSuccess(false);
     try {
       const { error: upsertError } = await supabase
         .from('store_settings')
-        .upsert({ id: 'default', ...settings, updated_at: new Date().toISOString() });
+        .upsert({ id: 'default', ...settings });
       if (upsertError) throw upsertError;
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -96,11 +97,22 @@ export default function SettingsPage() {
     setGeocoding(true);
     setGeocodeError(null);
     try {
-      const query = encodeURIComponent(settings.store_address.trim());
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${query}&countrycodes=br&format=json&limit=1`,
-        { headers: { 'Accept-Language': 'pt-BR' } }
-      );
+      let url = '';
+      
+      if (cepParts.logradouro && cepParts.cidade && cepParts.uf) {
+        const street = encodeURIComponent(`${cepParts.logradouro} ${cepParts.numero}`.trim());
+        const city = encodeURIComponent(cepParts.cidade);
+        const state = encodeURIComponent(cepParts.uf);
+        let params = `street=${street}&city=${city}&state=${state}&countrycodes=br&format=json&limit=1`;
+        const cleanCep = cep.replace(/\D/g, '');
+        if (cleanCep.length === 8) params += `&postalcode=${cleanCep}`;
+        url = `https://nominatim.openstreetmap.org/search?${params}`;
+      } else {
+        const query = encodeURIComponent(settings.store_address.trim());
+        url = `https://nominatim.openstreetmap.org/search?q=${query}&countrycodes=br&format=json&limit=1`;
+      }
+
+      const res = await fetch(url, { headers: { 'Accept-Language': 'pt-BR' } });
       const data = await res.json();
       if (!data || data.length === 0) {
         setGeocodeError('Endereço não encontrado. Tente incluir cidade e estado.');
