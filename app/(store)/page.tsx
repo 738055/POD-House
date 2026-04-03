@@ -47,6 +47,9 @@ type StoreSettings = {
   min_order_value: number;
   delivery_info: string | null;
   is_open: boolean;
+  promo_banner_enabled: boolean | null;
+  promo_banner_text: string | null;
+  promo_banner_bg_color: string | null;
 };
 
 type Promotion = {
@@ -564,25 +567,26 @@ export default function HomePage() {
       const todayISO = `${todayDate.getFullYear()}-${String(todayDate.getMonth()+1).padStart(2,'0')}-${String(todayDate.getDate()).padStart(2,'0')}`;
       const todayDow = todayDate.getDay();
 
-      const [settingsRes, promotionsRes, categoriesRes, productsRes, couponsRes, specialsRes] = await Promise.all([
-        supabase.from('store_settings').select('store_name,logo_url,cover_url,whatsapp_number,phone_number,address_display,opening_hours,min_order_value,delivery_info,is_open').eq('id', 'default').single(),
+      const [settingsRes, promotionsRes, categoriesRes, productsRes, specialsRes] = await Promise.all([
+        supabase.from('store_settings').select('store_name,logo_url,cover_url,whatsapp_number,phone_number,address_display,opening_hours,min_order_value,delivery_info,is_open,promo_banner_enabled,promo_banner_text,promo_banner_bg_color').eq('id', 'default').single(),
         supabase.from('promotions').select('*').eq('active', true).order('sort_order'),
         supabase.from('categories').select('*').eq('active', true).order('sort_order'),
         supabase.from('products').select(`
           id, name, description, base_price, puffs, is_featured, category_id, sort_order,
           product_variants ( id, product_id, name, image_url, price_override, stock, active )
         `).eq('active', true).order('sort_order'),
-        supabase.from('coupons').select('id').eq('active', true).limit(1),
         supabase.from('daily_specials')
           .select('*, products(id,name,description,base_price,puffs,product_variants(id,product_id,name,image_url,price_override,stock,active)), product_variants(id,product_id,name,image_url,price_override,stock,active)')
           .eq('active', true)
           .or(`scheduled_date.eq.${todayISO},day_of_week.eq.${todayDow}`),
       ]);
 
-      if (settingsRes.data) setStoreSettings(settingsRes.data as StoreSettings);
+      if (settingsRes.data) {
+        setStoreSettings(settingsRes.data as StoreSettings);
+        setShowCouponBanner(settingsRes.data.promo_banner_enabled ?? false);
+      }
       if (promotionsRes.data) setPromotions(promotionsRes.data);
       if (categoriesRes.data) setCategories(categoriesRes.data);
-      if (couponsRes.data && couponsRes.data.length > 0) setShowCouponBanner(true);
       if (specialsRes.data) {
         const raw = specialsRes.data as DailySpecial[];
         // Prefer scheduled_date over day_of_week for same product
@@ -626,11 +630,16 @@ export default function HomePage() {
   const renderInicio = () => (
     <div className="pb-20 lg:pb-8">
 
-      {/* ── Coupon banner — mobile only ───────────────────────────────────── */}
+      {/* ── Promo banner — mobile only ────────────────────────────────────── */}
       {showCouponBanner && (
-        <div className="lg:hidden flex items-center gap-3 bg-[#0EAD69] text-white px-4 py-3">
+        <div
+          className="lg:hidden flex items-center gap-3 text-white px-4 py-3"
+          style={{ backgroundColor: storeSettings?.promo_banner_bg_color || '#0EAD69' }}
+        >
           <Ticket size={18} className="flex-shrink-0" />
-          <p className="flex-1 text-sm font-semibold">Temos cupons disponíveis! Aproveite nos descontos.</p>
+          <p className="flex-1 text-sm font-semibold">
+            {storeSettings?.promo_banner_text || 'Temos cupons disponíveis! Aproveite nos descontos.'}
+          </p>
           <button onClick={() => setShowCouponBanner(false)} className="p-1 rounded-full hover:bg-white/20 transition-colors">
             <X size={16} />
           </button>
@@ -1019,15 +1028,14 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Coupon */}
-            {showCouponBanner && (
+            {/* Promo banner */}
+            {storeSettings?.promo_banner_enabled && (
               <button onClick={() => setIsCheckoutOpen(true)} className="w-full flex items-center justify-between bg-white rounded-2xl px-4 py-4 border border-gray-100 shadow-sm hover:bg-gray-50 transition-colors text-left">
                 <div className="flex items-center gap-3">
-                  <Ticket size={18} className="text-gray-500 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">Que tal usar um cupom?</p>
-                    <p className="text-xs text-[#0EAD69] font-medium">1 disponível</p>
-                  </div>
+                  <Ticket size={18} className="flex-shrink-0" style={{ color: storeSettings.promo_banner_bg_color || '#0EAD69' }} />
+                  <p className="text-sm font-semibold text-gray-800">
+                    {storeSettings.promo_banner_text || 'Temos cupons disponíveis!'}
+                  </p>
                 </div>
                 <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
               </button>

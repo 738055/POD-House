@@ -6,7 +6,7 @@ import { ImageUpload } from '../components/ImageUpload';
 import {
   Settings, Loader2, CheckCircle, AlertCircle,
   MapPin, Search, Navigation, Phone, MessageCircle,
-  Clock, Store, Truck, Save,
+  Clock, Store, Truck, Save, Megaphone,
 } from 'lucide-react';
 
 // ── Helpers de máscara ────────────────────────────────────────────────────────
@@ -50,6 +50,9 @@ type StoreSettings = {
   store_address: string;
   store_lat: number | null;
   store_lng: number | null;
+  promo_banner_enabled: boolean;
+  promo_banner_text: string;
+  promo_banner_bg_color: string;
 };
 
 const DEFAULT_SETTINGS: StoreSettings = {
@@ -58,6 +61,9 @@ const DEFAULT_SETTINGS: StoreSettings = {
   opening_hours: '', min_order_value: 0, delivery_info: '', is_open: true,
   default_delivery_fee: null, default_delivery_minutes: 60,
   store_address: '', store_lat: null, store_lng: null,
+  promo_banner_enabled: false,
+  promo_banner_text: 'Temos cupons disponíveis! Aproveite nos descontos.',
+  promo_banner_bg_color: '#0EAD69',
 };
 
 // ── Componente principal ──────────────────────────────────────────────────────
@@ -111,6 +117,9 @@ export default function SettingsPage() {
           store_address: data.store_address || '',
           store_lat: data.store_lat ?? null,
           store_lng: data.store_lng ?? null,
+          promo_banner_enabled: data.promo_banner_enabled ?? false,
+          promo_banner_text: data.promo_banner_text || 'Temos cupons disponíveis! Aproveite nos descontos.',
+          promo_banner_bg_color: data.promo_banner_bg_color || '#0EAD69',
         });
 
         // Tenta extrair CEP do endereço salvo para repopular o campo
@@ -492,7 +501,67 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* ── 5. Localização ── */}
+      {/* ── 5. Banner Promocional ── */}
+      <div className={sectionCls}>
+        <div className="flex items-center gap-2 mb-1">
+          <Megaphone size={16} className="text-purple-400" />
+          <h2 className="text-base font-bold text-white">Banner Promocional</h2>
+        </div>
+        <p className="text-sm text-gray-500 -mt-2">
+          Faixa exibida no topo da loja (mobile) e no carrinho (desktop). Use para anunciar cupons, promoções ou qualquer mensagem.
+        </p>
+
+        <div className="flex items-center gap-3 pt-1">
+          <button
+            type="button"
+            onClick={() => setSettings(s => ({ ...s, promo_banner_enabled: !s.promo_banner_enabled }))}
+            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${settings.promo_banner_enabled ? 'bg-green-600' : 'bg-gray-700'}`}
+          >
+            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${settings.promo_banner_enabled ? 'left-5' : 'left-0.5'}`} />
+          </button>
+          <div>
+            <p className="text-sm font-semibold text-white">{settings.promo_banner_enabled ? 'Banner ativo' : 'Banner inativo'}</p>
+            <p className="text-xs text-gray-500">{settings.promo_banner_enabled ? 'Visível para os clientes' : 'Oculto para os clientes'}</p>
+          </div>
+        </div>
+
+        <div>
+          <label className={labelCls}>Texto do banner</label>
+          <input
+            value={settings.promo_banner_text}
+            onChange={e => setSettings(s => ({ ...s, promo_banner_text: e.target.value }))}
+            placeholder="Temos cupons disponíveis! Aproveite nos descontos."
+            className={inputCls}
+          />
+        </div>
+
+        <div>
+          <label className={labelCls}>Cor de fundo</label>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={settings.promo_banner_bg_color}
+              onChange={e => setSettings(s => ({ ...s, promo_banner_bg_color: e.target.value }))}
+              className="w-10 h-10 rounded-lg border border-gray-700 bg-transparent cursor-pointer p-0.5"
+            />
+            <input
+              value={settings.promo_banner_bg_color}
+              onChange={e => setSettings(s => ({ ...s, promo_banner_bg_color: e.target.value }))}
+              placeholder="#0EAD69"
+              className={`${inputCls} font-mono uppercase max-w-[160px]`}
+            />
+            {/* Preview */}
+            <div
+              className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-white text-xs font-semibold truncate"
+              style={{ backgroundColor: settings.promo_banner_bg_color || '#0EAD69' }}
+            >
+              {settings.promo_banner_text || 'Prévia do banner'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 6. Localização ── */}
       <div className={sectionCls}>
         <div className="flex items-center gap-2 mb-1">
           <MapPin size={16} className="text-purple-400" />
