@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import {
   Package, Plus, ArrowDownCircle, ArrowUpCircle, RefreshCw,
@@ -37,7 +37,7 @@ type EntryType = 'in' | 'out' | 'adjustment';
 type FilterType = 'all' | 'low' | 'out';
 
 export default function StockPage() {
-  const supabase = createClient();
+  const { supabase } = useAuth();
   const { toast } = useToast();
 
   const [variants, setVariants] = useState<StockVariant[]>([]);

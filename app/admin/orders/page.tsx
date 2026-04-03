@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/hooks/use-auth';
 import { ChevronDown, RefreshCw, MessageCircle, CheckCircle, Star, Loader2, AlertCircle, Bell } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { STATUS_LABELS, STATUS_COLORS } from '@/app/admin/lib/constants';
 import { formatCurrency as fmt } from '@/lib/utils';
 
 export default function OrdersPage() {
-  const supabase = createClient();
+  const { supabase } = useAuth();
   const { toast } = useToast();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

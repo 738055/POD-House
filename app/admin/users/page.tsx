@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/hooks/use-auth';
 import { Search, Eye, X, ShoppingBag, Star, Phone, Loader2 } from 'lucide-react';
 import { STATUS_LABELS, STATUS_COLORS } from '@/app/admin/lib/constants';
 import { formatCurrency as fmt } from '@/lib/utils';
@@ -26,7 +26,7 @@ type OrderRow = {
 const PAGE_SIZE = 25;
 
 export default function UsersPage() {
-  const supabase = createClient();
+  const { supabase } = useAuth();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
