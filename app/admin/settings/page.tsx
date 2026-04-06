@@ -318,7 +318,7 @@ export default function SettingsPage() {
           <input
             value={settings.store_name}
             onChange={e => setSettings(s => ({ ...s, store_name: e.target.value }))}
-            placeholder="POD House"
+            placeholder="PODS"
             className={inputCls}
           />
         </div>

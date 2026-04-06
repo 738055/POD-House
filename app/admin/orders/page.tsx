@@ -203,7 +203,7 @@ export default function OrdersPage() {
                       <button
                         onClick={() => {
                           const items = order.order_items?.map((i: any) => `${i.quantity}x ${i.product_name} (${i.variant_name})`).join('\n') || '';
-                          const msg = encodeURIComponent(`Olá ${order.customer_name || 'Cliente'}! 🎉\n\nSeu pedido #${order.id.slice(0, 8)} foi ${order.status === 'confirmed' ? 'confirmado' : 'recebido'}!\n\n📋 *Itens:*\n${items}\n\n💰 *Total:* ${fmt(order.total)}\n🏍️ *Entrega:* ${order.address_neighborhood}\n\nPOD House 💜`);
+                          const msg = encodeURIComponent(`Olá ${order.customer_name || 'Cliente'}! 🎉\n\nSeu pedido #${order.id.slice(0, 8)} foi ${order.status === 'confirmed' ? 'confirmado' : 'recebido'}!\n\n📋 *Itens:*\n${items}\n\n💰 *Total:* ${fmt(order.total)}\n🏍️ *Entrega:* ${order.address_neighborhood}\n\nPODS 💜`);
                           const phone = order.customer_phone.replace(/\D/g, '');
                           window.open(`https://wa.me/55${phone}?text=${msg}`, '_blank');
                           supabase.from('orders').update({ whatsapp_sent: true }).eq('id', order.id);

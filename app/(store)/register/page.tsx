@@ -100,7 +100,7 @@ export default function RegisterPage() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
-          <Image src="/logo.png" alt="POD House Logo" width={80} height={80} className="mx-auto mb-4" />
+          <Image src="/logo.png" alt="Logo" width={80} height={80} className="mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900">Criar sua conta</h1>
           <p className="text-gray-500">Cadastre-se para fazer pedidos</p>
         </div>

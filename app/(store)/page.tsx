@@ -658,7 +658,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="pt-11 pb-4 px-4 text-center">
-            <h1 className="text-lg font-bold text-gray-900 mb-1">{storeSettings?.store_name || 'POD House'}</h1>
+            <h1 className="text-lg font-bold text-gray-900 mb-1">{storeSettings?.store_name || ''}</h1>
             <div className="flex items-center justify-center gap-1.5 text-gray-500 text-xs mb-2">
               <MapPin size={12} className="text-gray-400 flex-shrink-0" />
               <span>{storeSettings?.address_display || 'Londrina - PR'}</span>
@@ -734,7 +734,7 @@ export default function HomePage() {
               </div>
             </div>
             <div className="flex-1 pb-1 min-w-0">
-              <h1 className="text-xl font-bold text-gray-900">{storeSettings?.store_name || 'POD House'}</h1>
+              <h1 className="text-xl font-bold text-gray-900">{storeSettings?.store_name || ''}</h1>
               <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-0.5 flex-wrap">
                 <MapPin size={13} className="text-gray-400 flex-shrink-0" />
                 <span>{storeSettings?.address_display || 'Londrina - PR'}</span>

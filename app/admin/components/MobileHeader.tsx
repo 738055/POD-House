@@ -18,7 +18,7 @@ export function MobileHeader({ setMobileOpen }: MobileHeaderProps) {
           <Menu size={22} />
         </button>
         <div className="flex flex-col">
-          <span className="text-white font-black text-lg tracking-tighter leading-none">POD HOUSE</span>
+          <span className="text-white font-black text-lg tracking-tighter leading-none">PODS</span>
           <span className="text-[10px] font-bold text-purple-500 uppercase tracking-widest mt-0.5">Painel Admin</span>
         </div>
       </div>
