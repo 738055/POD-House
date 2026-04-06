@@ -8,6 +8,7 @@ export interface Profile {
   points_balance: number;
   created_at: string;
   updated_at: string;
+  avatar_url: string | null;
 }
 
 export interface Address {
@@ -46,6 +47,9 @@ export interface ProductVariant {
   active: boolean;
   sort_order: number;
   created_at: string;
+  description: string | null;
+  cost_price: number | null;
+  avg_cost: number | null;
 }
 
 export interface Product {
@@ -141,6 +145,16 @@ export interface PointsTransaction {
   created_at: string;
 }
 
+// Tabela de itens do carrinho persistente no banco de dados
+export interface DbCartItem {
+  id: string;
+  user_id: string;
+  variant_id: string;
+  quantity: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // Tipo usado no carrinho em memória / localStorage
 export interface CartItem {
   variantId: string;
@@ -227,6 +241,37 @@ export interface DeliveryZone {
   polygon_source: 'nominatim' | 'manual' | null;
 }
 
+export interface StoreSettings {
+  id: string;
+  store_name: string | null;
+  logo_url: string | null;
+  cover_url: string | null;
+  updated_at: string | null;
+  store_lat: number | null;
+  store_lng: number | null;
+  store_address: string | null;
+  whatsapp_number: string | null;
+  phone_number: string | null;
+  address_display: string | null;
+  opening_hours: string | null;
+  min_order_value: number | null;
+  delivery_info: string | null;
+  is_open: boolean | null;
+  default_delivery_fee: number | null;
+  default_delivery_minutes: number | null;
+  promo_banner_enabled: boolean | null;
+  promo_banner_text: string | null;
+  promo_banner_bg_color: string | null;
+}
+
+export interface UserCoupon {
+  id: string;
+  user_id: string;
+  coupon_id: string;
+  order_id: string | null;
+  used_at: string;
+}
+
 export interface StockEntry {
   id: string;
   variant_id: string;
@@ -238,6 +283,53 @@ export interface StockEntry {
   created_at: string;
 }
 
-// Placeholder para o tipo Database gerado pelo Supabase CLI
-// Substitua por `supabase gen types typescript` quando disponível
-export type Database = Record<string, unknown>;
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
+// Tipagem principal do banco de dados gerada (Database)
+export interface Database {
+  public: {
+    Tables: {
+      addresses: { Row: Address; Insert: Partial<Address>; Update: Partial<Address> };
+      cart_items: { Row: DbCartItem; Insert: Partial<DbCartItem>; Update: Partial<DbCartItem> };
+      categories: { Row: Category; Insert: Partial<Category>; Update: Partial<Category> };
+      coupons: { Row: Coupon; Insert: Partial<Coupon>; Update: Partial<Coupon> };
+      daily_specials: { Row: DailySpecial; Insert: Partial<DailySpecial>; Update: Partial<DailySpecial> };
+      delivery_zones: { Row: DeliveryZone; Insert: Partial<DeliveryZone>; Update: Partial<DeliveryZone> };
+      order_items: { Row: OrderItem; Insert: Partial<OrderItem>; Update: Partial<OrderItem> };
+      orders: { Row: Order; Insert: Partial<Order>; Update: Partial<Order> };
+      points_transactions: { Row: PointsTransaction; Insert: Partial<PointsTransaction>; Update: Partial<PointsTransaction> };
+      product_variants: { Row: ProductVariant; Insert: Partial<ProductVariant>; Update: Partial<ProductVariant> };
+      products: { Row: Product; Insert: Partial<Product>; Update: Partial<Product> };
+      profiles: { Row: Profile; Insert: Partial<Profile>; Update: Partial<Profile> };
+      promotions: { Row: Promotion; Insert: Partial<Promotion>; Update: Partial<Promotion> };
+      scheduled_promotions: { Row: ScheduledPromotion; Insert: Partial<ScheduledPromotion>; Update: Partial<ScheduledPromotion> };
+      stock_entries: { Row: StockEntry; Insert: Partial<StockEntry>; Update: Partial<StockEntry> };
+      store_settings: { Row: StoreSettings; Insert: Partial<StoreSettings>; Update: Partial<StoreSettings> };
+      user_coupons: { Row: UserCoupon; Insert: Partial<UserCoupon>; Update: Partial<UserCoupon> };
+      whatsapp_templates: { Row: WhatsappTemplate; Insert: Partial<WhatsappTemplate>; Update: Partial<WhatsappTemplate> };
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      validate_coupon: { Args: { p_code: string; p_user_id: string; p_subtotal: number }; Returns: Json };
+      place_order: {
+        Args: { p_user_id: string; p_address: Json; p_items: Json; p_delivery_fee: number; p_coupon_code?: string; p_points_to_redeem?: number; p_customer_name?: string; p_customer_phone?: string; p_notes?: string; };
+        Returns: Json;
+      };
+      get_dashboard_stats: {
+        Args: Record<string, never>;
+        Returns: { orders_count: number; clients_count: number; total_revenue: number; products_count: number }[];
+      };
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+  };
+}
