@@ -38,12 +38,15 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function AdminDashboard() {
-  const { supabase } = useAuth();
+  const { supabase, loading: authLoading } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [chartData, setChartData] = useState<DayData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Aguarda a sessão do Supabase ser restaurada antes de buscar os dados sensíveis
+    if (authLoading) return;
+
     async function fetchAll() {
       if (!supabase) return;
       setLoading(true);
@@ -86,7 +89,7 @@ export default function AdminDashboard() {
     }
 
     fetchAll();
-  }, [supabase]);
+  }, [supabase, authLoading]);
 
   return (
     <div className="w-full space-y-8">

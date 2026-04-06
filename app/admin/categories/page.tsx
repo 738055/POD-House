@@ -21,7 +21,7 @@ type Category = {
 };
 
 export default function AdminCategoriesPage() {
-  const { supabase } = useAuth();
+  const { supabase, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +29,8 @@ export default function AdminCategoriesPage() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (authLoading) return;
+
     async function fetchCategories() {
       if (!supabase) return;
       setLoading(true);
@@ -38,7 +40,7 @@ export default function AdminCategoriesPage() {
       setLoading(false);
     }
     fetchCategories();
-  }, [supabase]);
+  }, [supabase, authLoading]);
 
   async function deleteCategory(id: string) {
     const { error } = await supabase.from('categories').delete().eq('id', id);
