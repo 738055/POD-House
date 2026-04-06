@@ -55,32 +55,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase]);
 
   useEffect(() => {
-    // onAuthStateChange dispara INITIAL_SESSION imediatamente com a sessão em cache
-    // — sem round-trip de rede. Profile é buscado só quando o usuário muda.
+    let mounted = true;
+
+    // Busca a sessão inicial manualmente. Evita o bug de "loading infinito"
+    // no refresh da página, garantindo que o estado não dependa apenas do evento.
+    async function initSession() {
+      try {
+        const { data: { session: s } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        
+        setSession(s);
+        setUser(s?.user ?? null);
+
+        if (s?.user) {
+          const p = await fetchProfile(s.user.id);
+          if (mounted) setProfile(p);
+        }
+      } catch (error) {
+        console.error('Erro ao inicializar sessão:', error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    initSession();
+
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        if (event === 'SIGNED_OUT') {
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setLoading(false);
-          return;
+        if (!mounted || event === 'INITIAL_SESSION') return;
+
+        try {
+          if (event === 'SIGNED_OUT') {
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+            return;
+          }
+
+          setSession(newSession);
+          setUser(newSession?.user ?? null);
+
+          if (newSession?.user && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
+            const p = await fetchProfile(newSession.user.id);
+            if (mounted) setProfile(p);
+          }
+        } catch {
+          // Se fetchProfile falhar, continua sem profile — o layout vai redirecionar
         }
-
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-
-        // Busca profile apenas em mudanças reais de usuário, não em refresh de token
-        if (newSession?.user && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
-          const p = await fetchProfile(newSession.user.id);
-          setProfile(p);
-        }
-
-        setLoading(false);
       }
     );
 
-    return () => authListener?.subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      authListener?.subscription.unsubscribe();
+    };
   }, [supabase]);
 
   const signOut = async () => {
@@ -92,19 +120,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     user,
     profile,
-    isAdmin: profile?.role === 'admin',
-    loading,
-    signOut,
-    refreshSession,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+    isAdmin: 
