@@ -120,4 +120,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     user,
     profile,
-    isAdmin: 
+    isAdmin: profile?.role === 'admin',
+    loading,
+    signOut,
+    refreshSession,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
