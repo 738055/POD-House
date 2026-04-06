@@ -21,6 +21,7 @@ type ProductForAdminList = {
   id: string;
   name: string;
   description: string | null;
+  image_url: string | null;
   base_price: number;
   puffs: string | null;
   active: boolean;
@@ -56,7 +57,7 @@ export default function AdminProductsPage() {
 
     const { data, error, count } = await supabase
       .from('products')
-      .select(`id, name, description, base_price, puffs, active, is_featured, categories(name), product_variants(id, name, image_url, stock, price_override, active)`, { count: 'exact' })
+      .select(`id, name, description, image_url, base_price, puffs, active, is_featured, categories(name), product_variants(id, name, image_url, stock, price_override, active)`, { count: 'exact' })
       .order('name', { ascending: true })
       .range(from, to);
 
@@ -238,7 +239,7 @@ export default function AdminProductsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {filtered.map(product => {
                 const totalStock = getTotalStock(product);
-                const mainImage = product.product_variants[0]?.image_url;
+                const mainImage = product.image_url || product.product_variants[0]?.image_url;
                 const variantCount = product.product_variants.length;
 
                 return (
@@ -399,9 +400,9 @@ export default function AdminProductsPage() {
                           <td className="px-5 py-3.5">
                             <div className="flex items-center gap-3">
                               <div className="relative w-11 h-11 rounded-xl bg-gray-800 overflow-hidden border border-gray-700/50 shrink-0 flex items-center justify-center">
-                                {product.product_variants[0]?.image_url ? (
+                                {product.image_url || product.product_variants[0]?.image_url ? (
                                   <Image
-                                    src={product.product_variants[0].image_url}
+                                    src={product.image_url || product.product_variants[0].image_url!}
                                     alt={product.name}
                                     fill
                                     className="object-contain p-1"
@@ -489,8 +490,8 @@ export default function AdminProductsPage() {
                   <Card key={product.id} padding="none" className={cn('group', !product.active && 'opacity-60')}>
                     <div className="p-4 flex items-center gap-3">
                       <div className="relative w-14 h-14 rounded-xl bg-gray-800 overflow-hidden border border-gray-700/50 shrink-0 flex items-center justify-center">
-                        {product.product_variants[0]?.image_url ? (
-                          <Image src={product.product_variants[0].image_url} alt={product.name} fill className="object-contain p-1.5" unoptimized />
+                        {product.image_url || product.product_variants[0]?.image_url ? (
+                          <Image src={product.image_url || product.product_variants[0].image_url!} alt={product.name} fill className="object-contain p-1.5" unoptimized />
                         ) : (
                           <Package size={24} className="text-gray-600" />
                         )}

@@ -16,6 +16,7 @@ interface Product {
   id: string;
   name: string;
   description: string;
+  imageUrl?: string;
   variations: Variation[];
   promo?: {
     discountValue: number;
@@ -42,8 +43,7 @@ const ProductCard = React.memo(function ProductCard({ product, onAddToCart }: { 
     <div className="card-premium group flex flex-col h-full animate-fade-in">
       <div className="relative aspect-square overflow-hidden bg-surface-hover">
         <Image
-          src={selectedVariation.imageUrl || 'https://picsum.photos/seed/pod/400/400'}
-          alt={product.name}
+          src={product.name}
           fill
           sizes="(max-width: 480px) 50vw, 200px"
           className="object-cover transition-transform duration-500 group-hover:scale-110"

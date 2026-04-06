@@ -33,6 +33,7 @@ const variantSchema = z.object({
 const productSchema = z.object({
   name: z.string().min(3, 'Nome do produto é obrigatório (mín. 3 caracteres).'),
   description: z.string().optional(),
+  image_url: z.string().nullable().optional(),
   base_price: z.preprocess(
     (val) => parseFloat(String(val).replace(',', '.')),
     z.number().positive('O preço base deve ser positivo.')
@@ -69,6 +70,7 @@ export default function NewProductPage() {
       active: true,
       is_featured: false,
       variants: [{ name: '', description: '', price_override: null, stock: 0, image_url: null }],
+      image_url: null,
     },
   });
 
@@ -96,6 +98,7 @@ export default function NewProductPage() {
         .insert({
           name: data.name,
           description: data.description,
+          image_url: data.image_url,
           base_price: data.base_price,
           category_id: data.category_id,
           puffs: data.puffs,
@@ -188,30 +191,45 @@ export default function NewProductPage() {
                 <h2 className="text-base font-black text-white">Informações do Produto</h2>
               </div>
 
-              <div className="space-y-4">
-                <div>
+              <div className="flex flex-col sm:flex-row gap-5">
+                <div className="sm:w-1/3 flex-shrink-0">
                   <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wider">
-                    Nome do Produto *
+                    Foto do Produto
                   </label>
-                  <input
-                    {...register('name')}
-                    placeholder="Ex: Ignite V80"
-                    className="w-full bg-gray-800/60 border border-gray-700/50 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all text-sm font-medium"
+                  <ImageUpload
+                    bucket="product-images"
+                    folder="main"
+                    currentUrl={watch('image_url')}
+                    onUpload={(url) => setValue('image_url', url, { shouldValidate: true, shouldDirty: true })}
+                    onRemove={() => setValue('image_url', null, { shouldValidate: true, shouldDirty: true })}
+                    aspectRatio="square"
                   />
-                  {errors.name && <p className="text-red-400 text-xs mt-1.5 font-medium">{errors.name.message}</p>}
                 </div>
+                
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wider">
+                      Nome do Produto *
+                    </label>
+                    <input
+                      {...register('name')}
+                      placeholder="Ex: Ignite V80"
+                      className="w-full bg-gray-800/60 border border-gray-700/50 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all text-sm font-medium"
+                    />
+                    {errors.name && <p className="text-red-400 text-xs mt-1.5 font-medium">{errors.name.message}</p>}
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wider">
-                    Descrição
-                  </label>
-                  <textarea
-                    {...register('description')}
-                    rows={3}
-                    placeholder="Descreva as características do produto..."
-                    className="w-full bg-gray-800/60 border border-gray-700/50 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all text-sm resize-none"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wider">
+                      Descrição
+                    </label>
+                    <textarea
+                      {...register('description')}
+                      rows={3}
+                      placeholder="Descreva as características do produto..."
+                      className="w-full bg-gray-800/60 border border-gray-700/50 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all text-sm resize-none"
+                    />
+                  </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -258,6 +276,7 @@ export default function NewProductPage() {
                   </select>
                   {errors.category_id && <p className="text-red-400 text-xs mt-1.5 font-medium">{errors.category_id.message}</p>}
                 </div>
+              </div>
               </div>
             </Card>
 

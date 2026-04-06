@@ -80,6 +80,7 @@ type Product = {
   id: string;
   name: string;
   description: string | null;
+  image_url?: string | null;
   base_price: number;
   puffs: string | null;
   is_featured: boolean;
@@ -141,7 +142,7 @@ const ProductCard = React.memo(function ProductCard({ product, onOpen }: { produ
   const allVariants = isOutOfStock ? activeVariants : available;
   const minPrice = Math.min(...allVariants.map(v => v.price_override ?? product.base_price));
   const hasMultiple = available.length > 1;
-  const image = mainVariant.image_url ?? '/logo.png';
+  const image = product.image_url || mainVariant.image_url || '/logo.png';
 
   return (
     <div
@@ -572,7 +573,7 @@ export default function HomePage() {
         supabase.from('promotions').select('*').eq('active', true).order('sort_order'),
         supabase.from('categories').select('*').eq('active', true).order('sort_order'),
         supabase.from('products').select(`
-          id, name, description, base_price, puffs, is_featured, category_id, sort_order,
+          id, name, description, image_url, base_price, puffs, is_featured, category_id, sort_order,
           product_variants ( id, product_id, name, image_url, price_override, stock, active )
         `).eq('active', true).order('sort_order'),
         supabase.from('daily_specials')

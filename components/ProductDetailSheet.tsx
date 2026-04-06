@@ -23,8 +23,10 @@ export default function ProductDetailSheet({ product, onClose }: Props) {
 
   const variants = product?.product_variants?.filter(v => v.active) ?? [];
 
+  // Recupera a foto principal fixa caso cadastrada
+  const productImg = (product as any)?.image_url;
   // Fallback para quando a variante selecionada não tem imagem
-  const fallbackImage = variants.find(v => v.image_url)?.image_url ?? '/logo.png';
+  const fallbackImage = productImg || variants.find(v => v.image_url)?.image_url || '/logo.png';
 
   useEffect(() => {
     if (product) {
@@ -38,8 +40,8 @@ export default function ProductDetailSheet({ product, onClose }: Props) {
   if (!product) return null;
 
   const price = selectedVariant?.price_override ?? product.base_price;
-  // Imagem muda conforme o sabor selecionado
-  const imageUrl = selectedVariant?.image_url ?? fallbackImage;
+  // Se houver uma foto fixa da "Categoria" (produto pai), ela é fixa na exibição. Caso contrário, transita de sabor em sabor.
+  const imageUrl = productImg || selectedVariant?.image_url || fallbackImage;
   const outOfStock = selectedVariant ? selectedVariant.stock <= 0 : false;
 
   function handleSelectVariant(v: ProductVariant) {
@@ -53,7 +55,7 @@ export default function ProductDetailSheet({ product, onClose }: Props) {
       productId:   product!.id,
       productName: product!.name,
       variantName: selectedVariant.name,
-      imageUrl:    selectedVariant.image_url ?? fallbackImage,
+      imageUrl:    selectedVariant.image_url || productImg || fallbackImage,
       unitPrice:   price,
       stock:       selectedVariant.stock,
     }, qty);
