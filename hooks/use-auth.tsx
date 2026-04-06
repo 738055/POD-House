@@ -33,12 +33,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   async function fetchProfile(userId: string): Promise<Profile | null> {
-    const { data } = await supabase
+    const fetchPromise = supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single();
-    return data as Profile | null;
+      .single()
+      .then(({ data, error }) => {
+        if (error && error.code !== 'PGRST116') { // Ignora log se o erro for apenas "linha não encontrada"
+          console.error('Erro na query do perfil:', error.message);
+        }
+        return data ? (data as Profile) : null;
+      })
+      .catch(() => null);
+
+    // Timeout de segurança: se o Supabase não responder em 6s, continua sem perfil
+    const timeoutPromise = new Promise<null>(resolve =>
+      setTimeout(() => resolve(null), 6000)
+    );
+
+    return Promise.race([fetchPromise, timeoutPromise]);
   }
 
   // Exposto para forçar reload do perfil quando necessário (ex: edição de dados)
@@ -57,32 +70,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Busca a sessão inicial manualmente. Evita o bug de "loading infinito"
-    // no refresh da página, garantindo que o estado não dependa apenas do evento.
-    async function initSession() {
-      try {
-        const { data: { session: s } } = await supabase.auth.getSession();
-        if (!mounted) return;
-        
-        setSession(s);
-        setUser(s?.user ?? null);
-
-        if (s?.user) {
-          const p = await fetchProfile(s.user.id);
-          if (mounted) setProfile(p);
-        }
-      } catch (error) {
-        console.error('Erro ao inicializar sessão:', error);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
-
-    initSession();
-
+    // INITIAL_SESSION é disparado de forma síncrona pelo Supabase ao registrar o listener,
+    // com a sessão atual em memória/cookies — sem chamadas de rede. Isso garante que
+    // o loading seja resolvido mesmo se o token precisar ser renovado posteriormente.
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        if (!mounted || event === 'INITIAL_SESSION') return;
+        if (!mounted) return;
 
         try {
           if (event === 'SIGNED_OUT') {
@@ -95,12 +88,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(newSession);
           setUser(newSession?.user ?? null);
 
-          if (newSession?.user && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
+          if (newSession?.user && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
             const p = await fetchProfile(newSession.user.id);
             if (mounted) setProfile(p);
+          } else if (!newSession?.user) {
+            setProfile(null);
           }
         } catch {
           // Se fetchProfile falhar, continua sem profile — o layout vai redirecionar
+        } finally {
+          // Libera o loading apenas no evento inicial (sempre disparado no mount)
+          if (event === 'INITIAL_SESSION' && mounted) {
+            setLoading(false);
+          }
         }
       }
     );
