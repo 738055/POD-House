@@ -139,20 +139,42 @@ export default function EditProductPage() {
 
       if (productError) throw productError;
 
-      const variantsToUpsert = data.variants.map((v, i) => ({
-        id: v.id,
-        product_id: productId,
-        name: v.name,
-        description: v.description || null,
-        price_override: v.price_override,
-        stock: v.stock,
-        image_url: v.image_url || null,
-        active: true,
-        sort_order: i,
-      }));
+      const variantsToUpdate = data.variants
+        .filter((v) => v.id)
+        .map((v) => ({
+          id: v.id,
+          product_id: productId,
+          name: v.name,
+          description: v.description || null,
+          price_override: v.price_override,
+          stock: v.stock,
+          image_url: v.image_url || null,
+          active: true,
+          sort_order: data.variants.indexOf(v),
+        }));
 
-      const { error: variantsError } = await supabase.from('product_variants').upsert(variantsToUpsert);
-      if (variantsError) throw variantsError;
+      const variantsToInsert = data.variants
+        .filter((v) => !v.id)
+        .map((v) => ({
+          product_id: productId,
+          name: v.name,
+          description: v.description || null,
+          price_override: v.price_override,
+          stock: v.stock,
+          image_url: v.image_url || null,
+          active: true,
+          sort_order: data.variants.indexOf(v),
+        }));
+
+      if (variantsToUpdate.length > 0) {
+        const { error: updateError } = await supabase.from('product_variants').upsert(variantsToUpdate);
+        if (updateError) throw updateError;
+      }
+
+      if (variantsToInsert.length > 0) {
+        const { error: insertError } = await supabase.from('product_variants').insert(variantsToInsert);
+        if (insertError) throw insertError;
+      }
 
       const submittedIds = new Set(data.variants.map(v => v.id).filter(Boolean));
       const toDelete = originalVariants.filter(v => !submittedIds.has(v.id));
