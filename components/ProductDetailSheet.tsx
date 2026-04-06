@@ -40,8 +40,8 @@ export default function ProductDetailSheet({ product, onClose }: Props) {
   if (!product) return null;
 
   const price = selectedVariant?.price_override ?? product.base_price;
-  // Se houver uma foto fixa da "Categoria" (produto pai), ela é fixa na exibição. Caso contrário, transita de sabor em sabor.
-  const imageUrl = productImg || selectedVariant?.image_url || fallbackImage;
+  // Prioriza a imagem do sabor selecionado. Se o sabor não tiver imagem, exibe a foto da Categoria.
+  const imageUrl = selectedVariant?.image_url || productImg || fallbackImage;
   const outOfStock = selectedVariant ? selectedVariant.stock <= 0 : false;
 
   function handleSelectVariant(v: ProductVariant) {

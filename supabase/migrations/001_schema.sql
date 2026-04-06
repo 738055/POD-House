@@ -100,6 +100,7 @@ create table public.products (
   category_id uuid references public.categories(id) on delete set null,
   name        text not null,
   description text,
+  image_url   text,
   base_price  numeric(10,2) not null default 0,
   puffs       text,
   is_featured boolean not null default false,
