@@ -1,4 +1,4 @@
-'use client';
+git 'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -30,7 +30,11 @@ export default function CouponsPage() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const t = setTimeout(() => { load(); }, 0);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function startEdit(row?: Coupon) {
     if (row) {
