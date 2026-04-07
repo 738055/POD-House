@@ -57,6 +57,7 @@ export interface Product {
   category_id: string | null;
   name: string;
   description: string | null;
+  image_url: string | null;
   base_price: number;
   puffs: string | null;
   is_featured: boolean;
