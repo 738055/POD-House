@@ -263,6 +263,9 @@ export interface StoreSettings {
   promo_banner_enabled: boolean | null;
   promo_banner_text: string | null;
   promo_banner_bg_color: string | null;
+  open_time: string | null;
+  close_time: string | null;
+  open_days: number[] | null;
 }
 
 export interface UserCoupon {

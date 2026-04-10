@@ -6,7 +6,7 @@ import { ImageUpload } from '../components/ImageUpload';
 import {
   Settings, Loader2, CheckCircle, AlertCircle,
   MapPin, Search, Navigation, Phone, MessageCircle,
-  Clock, Store, Truck, Save, Megaphone,
+  Clock, Store, Truck, Save, Megaphone, CalendarDays,
 } from 'lucide-react';
 
 // ── Helpers de máscara ────────────────────────────────────────────────────────
@@ -53,7 +53,20 @@ type StoreSettings = {
   promo_banner_enabled: boolean;
   promo_banner_text: string;
   promo_banner_bg_color: string;
+  open_time: string;
+  close_time: string;
+  open_days: number[];
 };
+
+const ALL_DAYS = [
+  { label: 'Dom', value: 0 },
+  { label: 'Seg', value: 1 },
+  { label: 'Ter', value: 2 },
+  { label: 'Qua', value: 3 },
+  { label: 'Qui', value: 4 },
+  { label: 'Sex', value: 5 },
+  { label: 'Sáb', value: 6 },
+];
 
 const DEFAULT_SETTINGS: StoreSettings = {
   store_name: '', logo_url: null, cover_url: null,
@@ -64,6 +77,9 @@ const DEFAULT_SETTINGS: StoreSettings = {
   promo_banner_enabled: false,
   promo_banner_text: 'Temos cupons disponíveis! Aproveite nos descontos.',
   promo_banner_bg_color: '#0EAD69',
+  open_time: '08:00',
+  close_time: '23:00',
+  open_days: [0, 1, 2, 3, 4, 5, 6],
 };
 
 // ── Componente principal ──────────────────────────────────────────────────────
@@ -120,6 +136,9 @@ export default function SettingsPage() {
           promo_banner_enabled: data.promo_banner_enabled ?? false,
           promo_banner_text: data.promo_banner_text || 'Temos cupons disponíveis! Aproveite nos descontos.',
           promo_banner_bg_color: data.promo_banner_bg_color || '#0EAD69',
+          open_time: data.open_time || '08:00',
+          close_time: data.close_time || '23:00',
+          open_days: data.open_days ?? [0, 1, 2, 3, 4, 5, 6],
         });
 
         // Tenta extrair CEP do endereço salvo para repopular o campo
@@ -561,7 +580,80 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* ── 6. Localização ── */}
+      {/* ── 6. Horário de Funcionamento ── */}
+      <div className={sectionCls}>
+        <div className="flex items-center gap-2 mb-1">
+          <CalendarDays size={16} className="text-purple-400" />
+          <h2 className="text-base font-bold text-white">Horário de Funcionamento</h2>
+        </div>
+        <p className="text-sm text-gray-500 -mt-2">
+          A loja abre e fecha automaticamente conforme os horários abaixo.
+          O toggle "Loja fechada" da seção acima sobrepõe tudo e força o fechamento imediato.
+        </p>
+
+        {/* Dias da semana */}
+        <div>
+          <label className={labelCls}>Dias de atendimento</label>
+          <div className="flex gap-2 flex-wrap">
+            {ALL_DAYS.map(d => {
+              const active = settings.open_days.includes(d.value);
+              return (
+                <button
+                  key={d.value}
+                  type="button"
+                  onClick={() => {
+                    const next = active
+                      ? settings.open_days.filter(x => x !== d.value)
+                      : [...settings.open_days, d.value].sort((a, b) => a - b);
+                    setSettings(s => ({ ...s, open_days: next }));
+                  }}
+                  className={`w-12 h-10 rounded-lg text-sm font-bold transition-colors ${
+                    active
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-800 text-gray-500 hover:bg-gray-700 border border-gray-700'
+                  }`}
+                >
+                  {d.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Horário de abertura e encerramento */}
+        <div className="grid grid-cols-2 gap-5">
+          <div>
+            <label className={labelCls}>Abertura</label>
+            <input
+              type="time"
+              value={settings.open_time}
+              onChange={e => setSettings(s => ({ ...s, open_time: e.target.value }))}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Encerramento</label>
+            <input
+              type="time"
+              value={settings.close_time}
+              onChange={e => setSettings(s => ({ ...s, close_time: e.target.value }))}
+              className={inputCls}
+            />
+          </div>
+        </div>
+
+        {/* Preview */}
+        <div className="flex items-center gap-2 bg-gray-800/60 border border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-300">
+          <Clock size={14} className="text-purple-400 flex-shrink-0" />
+          <span>
+            {settings.open_days.length === 0
+              ? 'Nenhum dia selecionado — loja sempre fechada'
+              : `${ALL_DAYS.filter(d => settings.open_days.includes(d.value)).map(d => d.label).join(', ')} · ${settings.open_time} às ${settings.close_time}`}
+          </span>
+        </div>
+      </div>
+
+      {/* ── 7. Localização ── */}
       <div className={sectionCls}>
         <div className="flex items-center gap-2 mb-1">
           <MapPin size={16} className="text-purple-400" />

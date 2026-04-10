@@ -50,7 +50,30 @@ type StoreSettings = {
   promo_banner_enabled: boolean | null;
   promo_banner_text: string | null;
   promo_banner_bg_color: string | null;
+  open_time: string | null;
+  close_time: string | null;
+  open_days: number[] | null;
 };
+
+/** Calcula se a loja está aberta agora com base no horário configurado */
+function computeIsOpen(s: StoreSettings | null): boolean {
+  if (!s) return true;
+  if (s.is_open === false) return false;
+  if (!s.open_time || !s.close_time) return s.is_open !== false;
+
+  const now = new Date();
+  const day = now.getDay();
+
+  if (s.open_days && s.open_days.length > 0 && !s.open_days.includes(day)) return false;
+
+  const [oh, om] = s.open_time.split(':').map(Number);
+  const [ch, cm] = s.close_time.split(':').map(Number);
+  const nowMin  = now.getHours() * 60 + now.getMinutes();
+  const openMin = oh * 60 + om;
+  const closeMin = ch * 60 + cm;
+
+  return nowMin >= openMin && nowMin < closeMin;
+}
 
 type Promotion = {
   id: string;
@@ -552,6 +575,7 @@ export default function HomePage() {
   const [showCouponBanner, setShowCouponBanner] = useState(false);
 
   const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null);
+  const isOpen = computeIsOpen(storeSettings);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -569,7 +593,7 @@ export default function HomePage() {
       const todayDow = todayDate.getDay();
 
       const [settingsRes, promotionsRes, categoriesRes, productsRes, specialsRes] = await Promise.all([
-        supabase.from('store_settings').select('store_name,logo_url,cover_url,whatsapp_number,phone_number,address_display,opening_hours,min_order_value,delivery_info,is_open,promo_banner_enabled,promo_banner_text,promo_banner_bg_color').eq('id', 'default').single(),
+        supabase.from('store_settings').select('store_name,logo_url,cover_url,whatsapp_number,phone_number,address_display,opening_hours,min_order_value,delivery_info,is_open,promo_banner_enabled,promo_banner_text,promo_banner_bg_color,open_time,close_time,open_days').eq('id', 'default').single(),
         supabase.from('promotions').select('*').eq('active', true).order('sort_order'),
         supabase.from('categories').select('*').eq('active', true).order('sort_order'),
         supabase.from('products').select(`
@@ -666,11 +690,11 @@ export default function HomePage() {
               <span className="text-gray-300">•</span>
               <button onClick={() => setIsStoreInfoOpen(true)} className="text-[#0EAD69] font-semibold">Mais informações</button>
             </div>
-            <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full ${storeSettings?.is_open !== false ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${storeSettings?.is_open !== false ? 'bg-green-500' : 'bg-red-500'}`} />
-              {storeSettings?.is_open !== false
+            <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full ${isOpen ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${isOpen ? 'bg-green-500' : 'bg-red-500'}`} />
+              {isOpen
                 ? `Aberto${storeSettings?.opening_hours ? ` · ${storeSettings.opening_hours}` : ''}`
-                : `Fechado · Abrimos às ${storeSettings?.opening_hours || '09h30'}`}
+                : `Fechado · Abre às ${storeSettings?.open_time || storeSettings?.opening_hours || '09h00'}`}
             </span>
           </div>
         </div>
@@ -746,11 +770,11 @@ export default function HomePage() {
               </div>
             </div>
             <div className="pb-1 flex-shrink-0">
-              <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${storeSettings?.is_open !== false ? 'text-green-700' : 'text-red-600'}`}>
-                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${storeSettings?.is_open !== false ? 'bg-green-500' : 'bg-red-500'}`} />
-                {storeSettings?.is_open !== false
+              <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${isOpen ? 'text-green-700' : 'text-red-600'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isOpen ? 'bg-green-500' : 'bg-red-500'}`} />
+                {isOpen
                   ? `Aberto${storeSettings?.opening_hours ? ` · ${storeSettings.opening_hours}` : ''}`
-                  : `Fechado · Abrimos às ${storeSettings?.opening_hours || '09h30'}`}
+                  : `Fechado · Abre às ${storeSettings?.open_time || storeSettings?.opening_hours || '09h00'}`}
               </span>
             </div>
           </div>
@@ -1021,8 +1045,11 @@ export default function HomePage() {
                       <span className="text-sm text-gray-600 font-medium">Total</span>
                       <span className="font-bold text-gray-900">{formatCurrency(cart.totalPrice)}</span>
                     </div>
-                    <button onClick={() => setIsCheckoutOpen(true)} className="w-full bg-black text-white font-bold py-3 rounded-xl text-sm hover:bg-gray-800 transition-colors">
-                      Finalizar Pedido
+                    <button
+                      disabled={!isOpen}
+                      onClick={() => isOpen && setIsCheckoutOpen(true)}
+                      className={`w-full font-bold py-3 rounded-xl text-sm transition-colors ${isOpen ? 'bg-black text-white hover:bg-gray-800' : 'bg-gray-200 text-gray-500 cursor-default'}`}>
+                      {isOpen ? 'Finalizar Pedido' : `Fechado · Abre às ${storeSettings?.open_time || '09h00'}`}
                     </button>
                   </div>
                 </div>
@@ -1044,14 +1071,16 @@ export default function HomePage() {
 
             {/* Store status button */}
             <button
-              disabled={storeSettings?.is_open === false}
-              onClick={() => storeSettings?.is_open !== false && setIsCheckoutOpen(true)}
+              disabled={!isOpen}
+              onClick={() => isOpen && setIsCheckoutOpen(true)}
               className={`w-full py-4 rounded-2xl font-bold text-sm transition-colors ${
-                storeSettings?.is_open !== false
+                isOpen
                   ? 'bg-[#0EAD69] text-white hover:bg-green-600 cursor-pointer'
                   : 'bg-gray-200 text-gray-500 cursor-default'
               }`}>
-              {storeSettings?.is_open !== false ? 'Estabelecimento aberto' : 'Estabelecimento fechado'}
+              {isOpen
+                ? 'Estabelecimento aberto'
+                : `Fechado · Abre às ${storeSettings?.open_time || '09h00'}`}
             </button>
 
           </div>
@@ -1243,7 +1272,7 @@ export default function HomePage() {
       )}
 
       {/* Modals */}
-      <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart.items} onUpdateQuantity={cart.updateQty} onRemove={cart.removeItem} onCheckout={() => { setIsCartOpen(false); setIsCheckoutOpen(true); }} />
+      <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart.items} onUpdateQuantity={cart.updateQty} onRemove={cart.removeItem} onCheckout={() => { setIsCartOpen(false); if (isOpen) setIsCheckoutOpen(true); }} />
       <CheckoutFlow isOpen={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} />
       <DeliveryModal isOpen={isDeliveryOpen} onClose={() => setIsDeliveryOpen(false)} />
       <StoreInfoModal isOpen={isStoreInfoOpen} onClose={() => setIsStoreInfoOpen(false)} settings={storeSettings} />
