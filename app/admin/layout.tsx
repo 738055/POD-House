@@ -9,19 +9,27 @@ import { ToastProvider } from '@/hooks/use-toast';
 import { ToastContainer } from './components/Toast';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAdmin, loading, signOut } = useAuth();
+  const { user, profile, isAdmin, loading, signOut } = useAuth();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    if (!loading && (!user || !isAdmin)) {
-      router.replace('/');
+    if (!loading) {
+      // Só redireciona se:
+      // - não há usuário autenticado, OU
+      // - o perfil foi carregado e confirmou que não é admin
+      // Se profile === null com user presente, o fetch pode ainda estar em curso — não redireciona
+      if (!user) {
+        router.replace('/');
+      } else if (profile !== null && !isAdmin) {
+        router.replace('/');
+      }
     }
-  }, [user, isAdmin, loading, router]);
+  }, [user, profile, isAdmin, loading, router]);
 
-  // Redireciona quando carregamento finalizar sem permissão
-  // Middleware já protege a rota — aqui só prevenimos flash de conteúdo
-  if (!loading && (!user || !isAdmin)) return null;
+  // Bloqueia render apenas em casos confirmados de falta de permissão
+  if (!loading && !user) return null;
+  if (!loading && profile !== null && !isAdmin) return null;
 
   return (
     <ToastProvider>

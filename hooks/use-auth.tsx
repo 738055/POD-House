@@ -46,9 +46,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => null);
 
-    // Timeout de segurança: se o Supabase não responder em 6s, continua sem perfil
+    // Timeout de segurança: se o Supabase não responder em 15s, continua sem perfil
     const timeoutPromise = new Promise<null>(resolve =>
-      setTimeout(() => resolve(null), 6000)
+      setTimeout(() => resolve(null), 15000)
     );
 
     return Promise.race([fetchPromise, timeoutPromise]);
