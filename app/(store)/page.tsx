@@ -574,7 +574,7 @@ export default function HomePage() {
         supabase.from('categories').select('*').eq('active', true).order('sort_order'),
         supabase.from('products').select(`
           id, name, description, image_url, base_price, puffs, is_featured, category_id, sort_order,
-          product_variants ( id, product_id, name, image_url, price_override, stock, active )
+          product_variants ( id, product_id, name, description, image_url, price_override, stock, active )
         `).eq('active', true).order('sort_order'),
         supabase.from('daily_specials')
           .select('*, products(id,name,description,base_price,puffs,product_variants(id,product_id,name,image_url,price_override,stock,active)), product_variants(id,product_id,name,image_url,price_override,stock,active)')
