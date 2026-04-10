@@ -88,7 +88,7 @@ export default function ProductDetailSheet({ product, onClose }: Props) {
         </div>
 
         {/* RIGHT: Área de Detalhes e Sabores (Mobile bottom, Desktop right) */}
-        <div className="flex flex-col flex-1 w-full md:w-[400px] lg:w-[450px] border-l border-gray-100 bg-white h-full max-h-[59vh] md:max-h-full">
+        <div className="flex flex-col flex-1 min-h-0 w-full md:w-[400px] lg:w-[450px] border-l border-gray-100 bg-white">
 
           {/* Header Desktop */}
           <div className="hidden md:flex items-start justify-between p-5 pb-4 border-b border-gray-100">

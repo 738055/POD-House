@@ -71,6 +71,9 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
   const [usePoints, setUsePoints]         = useState(false);
   const [pointsToRedeem, setPointsToRedeem] = useState(0);
 
+  // Número WhatsApp da loja (carregado do banco)
+  const [storeWhatsapp, setStoreWhatsapp] = useState<string>('');
+
   // Frete: detectado automaticamente via polígono/zona
   const deliveryFee    = zoneResult?.delivery_fee ?? 0;
   const couponDiscount = couponResult?.valid ? (couponResult.type === 'free_delivery' ? deliveryFee : (couponResult.discount ?? 0)) : 0;
@@ -103,6 +106,11 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
         .then(({ data }) => { if (data) setSavedAddresses(data as Address[]); });
     }
   }, [isOpen, user]);
+
+  useEffect(() => {
+    supabase.from('store_settings').select('whatsapp_number').eq('id', 'default').single()
+      .then(({ data }) => { if (data?.whatsapp_number) setStoreWhatsapp(data.whatsapp_number); });
+  }, []);
 
   if (!isOpen) return null;
 
@@ -296,7 +304,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
       `_Aguardando confirmação do vendedor_`,
     ].filter(Boolean).join('\n');
 
-    const wp = process.env.NEXT_PUBLIC_WHATSAPP_PHONE ?? '5543999999999';
+    const wp = storeWhatsapp || process.env.NEXT_PUBLIC_WHATSAPP_PHONE || '';
     window.open(`https://wa.me/${wp}?text=${encodeURIComponent(msg)}`, '_blank');
 
     setOrderSuccess({ orderId: result.order_id, total: result.total });
