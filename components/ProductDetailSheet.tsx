@@ -167,6 +167,11 @@ export default function ProductDetailSheet({ product, onClose }: Props) {
                               <span className={`text-sm font-bold truncate ${isSelected ? 'text-purple-700' : 'text-gray-800'}`}>
                                 {v.name}
                               </span>
+                              {v.description && (
+                                <span className="text-xs text-gray-500 truncate leading-snug">
+                                  {v.description}
+                                </span>
+                              )}
                               {v.price_override && (
                                 <span className="text-xs font-bold text-[#0EAD69]">
                                   {fmt(v.price_override)}
