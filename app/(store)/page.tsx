@@ -789,6 +789,12 @@ export default function HomePage() {
   const renderInicio = () => (
     <div className="pb-20 lg:pb-8">
 
+      {/* ── WhatsApp warning — mobile only ────────────────────────────────── */}
+      <div className="lg:hidden flex items-center gap-3 bg-red-600 text-white px-4 py-3 animate-pulse">
+        <Phone size={18} className="flex-shrink-0" />
+        <p className="flex-1 text-sm font-bold">Para concluir seu pedido, finalize pelo WhatsApp.</p>
+      </div>
+
       {/* ── Promo banner — mobile only ────────────────────────────────────── */}
       {showCouponBanner && (
         <div
@@ -1188,6 +1194,12 @@ export default function HomePage() {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* WhatsApp warning */}
+            <div className="w-full flex items-center gap-3 bg-red-600 text-white rounded-2xl px-4 py-3 animate-pulse">
+              <Phone size={18} className="flex-shrink-0" />
+              <p className="text-sm font-bold">Para concluir seu pedido, finalize pelo WhatsApp.</p>
             </div>
 
             {/* Promo banner */}
