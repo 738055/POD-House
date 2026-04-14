@@ -73,6 +73,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
 
   // Número WhatsApp da loja (carregado do banco)
   const [storeWhatsapp, setStoreWhatsapp] = useState<string>('');
+  const [whatsappUrl, setWhatsappUrl] = useState<string>('');
 
   // Frete: detectado automaticamente via polígono/zona
   const deliveryFee    = zoneResult?.delivery_fee ?? 0;
@@ -218,6 +219,9 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
     setLoading(true);
     setError(null);
 
+    // Abre a janela AGORA (contexto de clique do usuário) para evitar bloqueio de popup
+    const waWindow = typeof window !== 'undefined' ? window.open('about:blank', '_blank') : null;
+
     let finalUserId = user?.id ?? null;
 
     // Cadastro silencioso se for visitante e tiver e-mail
@@ -305,7 +309,11 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
     ].filter(Boolean).join('\n');
 
     const wp = storeWhatsapp || process.env.NEXT_PUBLIC_WHATSAPP_PHONE || '';
-    window.open(`https://wa.me/${wp}?text=${encodeURIComponent(msg)}`, '_blank');
+    const waUrl = `https://wa.me/${wp}?text=${encodeURIComponent(msg)}`;
+    if (waWindow) {
+      waWindow.location.href = waUrl;
+    }
+    setWhatsappUrl(waUrl);
 
     setOrderSuccess({ orderId: result.order_id, total: result.total });
     setLoading(false);
@@ -369,6 +377,16 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
               Você receberá <strong>{Math.floor(orderSuccess.total)} pontos</strong> quando o vendedor confirmar seu pedido!
             </p>
           </div>
+          {whatsappUrl && (
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl mb-3 transition-colors"
+            >
+              <MessageCircle size={20} /> Abrir WhatsApp
+            </a>
+          )}
           <button onClick={onClose} className="w-full bg-black text-white font-bold py-4 rounded-xl">
             Voltar para a loja
           </button>

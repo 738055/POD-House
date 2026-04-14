@@ -134,6 +134,20 @@ type DailySpecial = {
   product_variants: ProductVariant | null;
 };
 
+type ScheduledPromo = {
+  id: string;
+  title: string;
+  description: string | null;
+  scheduled_date: string;
+  start_time: string;
+  end_time: string;
+  color: string;
+  active: boolean;
+  promotion_id: string | null;
+  coupon_id: string | null;
+  coupons?: { code: string; description: string | null } | null;
+};
+
 interface ZoneResult {
   zone_name: string;
   delivery_fee: number;
@@ -560,6 +574,113 @@ function CategoryDropdown({ isOpen, onClose, selectedCategory, onSelect, categor
   );
 }
 
+// ── Daily Promo CTA Modal ───────────────────────────────────────────────────
+function DailyPromoModal({
+  isOpen, onClose, dailySpecials, scheduledPromos, onOpenProduct,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  dailySpecials: DailySpecial[];
+  scheduledPromos: ScheduledPromo[];
+  onOpenProduct: (p: Product) => void;
+}) {
+  if (!isOpen || (dailySpecials.length === 0 && scheduledPromos.length === 0)) return null;
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl animate-slide-up max-h-[88vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <Flame size={20} className="text-white" />
+            <h2 className="text-white font-black text-lg">Ofertas de Hoje!</h2>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors">
+            <X size={18} className="text-white" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="overflow-y-auto flex-1 p-4 space-y-4">
+          {/* Scheduled promotions for today */}
+          {scheduledPromos.map(promo => (
+            <div key={promo.id} className="rounded-2xl overflow-hidden border-2"
+              style={{ borderColor: promo.color + '60', backgroundColor: promo.color + '10' }}>
+              <div className="px-4 py-3 flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: promo.color }}>
+                  <Zap size={18} className="text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-gray-900 text-sm">{promo.title}</p>
+                  {promo.description && <p className="text-gray-600 text-xs mt-0.5 line-clamp-2">{promo.description}</p>}
+                  <p className="text-xs text-gray-400 mt-1">{promo.start_time} – {promo.end_time}</p>
+                  {promo.coupons && (
+                    <div className="mt-2 inline-flex items-center gap-1.5 bg-white border border-dashed border-amber-400 rounded-lg px-2.5 py-1">
+                      <Ticket size={12} className="text-amber-500" />
+                      <span className="text-xs font-black text-amber-700 tracking-wide">{promo.coupons.code}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Daily specials products */}
+          {dailySpecials.map(special => {
+            const p = special.products;
+            if (!p) return null;
+            const variant = special.product_variants;
+            const basePrice = variant?.price_override ?? p.base_price;
+            const finalPrice = discountedPrice(basePrice, special.discount_type, special.discount_value);
+            const hasDiscount = special.discount_type !== 'none';
+            const imgUrl = variant?.image_url ?? p.product_variants?.[0]?.image_url ?? '/logo.png';
+            const fullProduct: Product = { ...p, is_featured: false, category_id: null } as Product;
+            return (
+              <div key={special.id}
+                onClick={() => { onOpenProduct(fullProduct); onClose(); }}
+                className="cursor-pointer bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl overflow-hidden hover:border-orange-400 transition-all flex gap-3 p-3">
+                <div className="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-white">
+                  <Image src={imgUrl} alt={p.name} fill className="object-contain p-1" />
+                  {hasDiscount && (
+                    <span className="absolute top-1 left-1 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                      {special.discount_type === 'percentage' ? `-${special.discount_value}%` : `-${fmtCurrency(special.discount_value)}`}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="inline-flex items-center gap-1 bg-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase mb-1">
+                    <Flame size={8} /> {special.highlight_label}
+                  </span>
+                  <p className="font-bold text-gray-900 text-sm leading-tight">{p.name}</p>
+                  {variant && <p className="text-orange-600 text-xs">{variant.name}</p>}
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="text-base font-black text-orange-600">{fmtCurrency(finalPrice)}</span>
+                    {hasDiscount && <span className="text-xs text-gray-400 line-through">{fmtCurrency(basePrice)}</span>}
+                  </div>
+                </div>
+                <div className="flex items-center flex-shrink-0">
+                  <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                    <ChevronRight size={16} className="text-white" />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-100 flex-shrink-0">
+          <button onClick={onClose}
+            className="w-full bg-black text-white font-bold py-3 rounded-xl hover:bg-gray-800 transition-colors">
+            Ver cardápio completo
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Home page ─────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<'inicio' | 'promocoes' | 'pedidos' | 'perfil'>('inicio');
@@ -580,6 +701,8 @@ export default function HomePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [dailySpecials, setDailySpecials] = useState<DailySpecial[]>([]);
+  const [scheduledPromos, setScheduledPromos] = useState<ScheduledPromo[]>([]);
+  const [showPromoModal, setShowPromoModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const { supabase, user, profile } = useAuth();
@@ -592,7 +715,7 @@ export default function HomePage() {
       const todayISO = `${todayDate.getFullYear()}-${String(todayDate.getMonth()+1).padStart(2,'0')}-${String(todayDate.getDate()).padStart(2,'0')}`;
       const todayDow = todayDate.getDay();
 
-      const [settingsRes, promotionsRes, categoriesRes, productsRes, specialsRes] = await Promise.all([
+      const [settingsRes, promotionsRes, categoriesRes, productsRes, specialsRes, scheduledRes] = await Promise.all([
         supabase.from('store_settings').select('store_name,logo_url,cover_url,whatsapp_number,phone_number,address_display,opening_hours,min_order_value,delivery_info,is_open,promo_banner_enabled,promo_banner_text,promo_banner_bg_color,open_time,close_time,open_days').eq('id', 'default').single(),
         supabase.from('promotions').select('*').eq('active', true).order('sort_order'),
         supabase.from('categories').select('*').eq('active', true).order('sort_order'),
@@ -604,6 +727,10 @@ export default function HomePage() {
           .select('*, products(id,name,description,base_price,puffs,product_variants(id,product_id,name,image_url,price_override,stock,active)), product_variants(id,product_id,name,image_url,price_override,stock,active)')
           .eq('active', true)
           .or(`scheduled_date.eq.${todayISO},day_of_week.eq.${todayDow}`),
+        supabase.from('scheduled_promotions')
+          .select('id,title,description,scheduled_date,start_time,end_time,color,active,promotion_id,coupon_id,coupons(code,description)')
+          .eq('active', true)
+          .eq('scheduled_date', todayISO),
       ]);
 
       if (settingsRes.data) {
@@ -621,6 +748,8 @@ export default function HomePage() {
         const dowSpecials = exact.filter(s => !(s as any).scheduled_date && !dateProductIds.has(s.product_id));
         setDailySpecials([...dateSpecials, ...dowSpecials]);
       }
+      if (scheduledRes.data) setScheduledPromos(scheduledRes.data as ScheduledPromo[]);
+
       if (productsRes.data) {
         // Filtra variantes com estoque > 0 e ativas; remove produtos sem variantes disponíveis
         const filtered = (productsRes.data as Product[])
@@ -633,7 +762,12 @@ export default function HomePage() {
       }
       setLoading(false);
     }
-    fetchData();
+    fetchData().then(() => {
+      // Show promo modal on first load if not already dismissed this session
+      if (!sessionStorage.getItem('promoModalDismissed')) {
+        setShowPromoModal(true);
+      }
+    });
   }, [supabase]);
 
   const filteredProducts = useMemo(() => allProducts.filter(product => {
@@ -1180,7 +1314,40 @@ export default function HomePage() {
         </div>
       )}
 
-      {promotions.length === 0 && dailySpecials.length === 0 && (
+      {/* Promoções agendadas do dia */}
+      {scheduledPromos.length > 0 && (
+        <div className="px-4 lg:px-0 mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <Zap size={20} className="text-purple-500" />
+            <h2 className="text-lg font-bold text-gray-900">Promoções de Hoje</h2>
+          </div>
+          <div className="space-y-3">
+            {scheduledPromos.map(promo => (
+              <div key={promo.id} className="rounded-2xl overflow-hidden border-2 p-4 flex items-start gap-4"
+                style={{ borderColor: promo.color + '60', backgroundColor: promo.color + '10' }}>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: promo.color }}>
+                  <Zap size={20} className="text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-black text-gray-900">{promo.title}</p>
+                  {promo.description && <p className="text-gray-600 text-sm mt-1">{promo.description}</p>}
+                  <p className="text-xs text-gray-400 mt-1">{promo.start_time} – {promo.end_time}</p>
+                  {promo.coupons && (
+                    <div className="mt-2 inline-flex items-center gap-1.5 bg-white border border-dashed border-amber-400 rounded-lg px-3 py-1.5">
+                      <Ticket size={13} className="text-amber-500" />
+                      <span className="text-sm font-black text-amber-700 tracking-wide">{promo.coupons.code}</span>
+                      {promo.coupons.description && <span className="text-xs text-gray-500 ml-1">— {promo.coupons.description}</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {promotions.length === 0 && dailySpecials.length === 0 && scheduledPromos.length === 0 && (
         <div className="px-4 lg:px-0 text-center py-12">
           <Tag size={40} className="text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">Nenhuma promoção ativa no momento</p>
@@ -1273,6 +1440,13 @@ export default function HomePage() {
 
       {/* Modals */}
       <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart.items} onUpdateQuantity={cart.updateQty} onRemove={cart.removeItem} onCheckout={() => { setIsCartOpen(false); if (isOpen) setIsCheckoutOpen(true); }} />
+      <DailyPromoModal
+        isOpen={showPromoModal}
+        onClose={() => { setShowPromoModal(false); sessionStorage.setItem('promoModalDismissed', '1'); }}
+        dailySpecials={dailySpecials}
+        scheduledPromos={scheduledPromos}
+        onOpenProduct={handleOpenProduct}
+      />
       <CheckoutFlow isOpen={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} />
       <DeliveryModal isOpen={isDeliveryOpen} onClose={() => setIsDeliveryOpen(false)} />
       <StoreInfoModal isOpen={isStoreInfoOpen} onClose={() => setIsStoreInfoOpen(false)} settings={storeSettings} />
