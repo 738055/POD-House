@@ -735,11 +735,19 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
               </button>
             </>
           ) : (
-            <button onClick={submitOrder} disabled={loading}
-              className="w-full bg-green-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 active:opacity-80 hover:bg-green-700">
-              {loading ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
-              {loading ? 'Processando...' : 'Enviar Pedido no WhatsApp'}
-            </button>
+            <>
+              <div className="mb-3 bg-red-600 rounded-xl px-4 py-3 flex items-start gap-2">
+                <AlertTriangle size={16} className="text-white mt-0.5 flex-shrink-0" />
+                <p className="text-white text-sm font-semibold leading-snug">
+                  O pedido só é confirmado após envio no WhatsApp.
+                </p>
+              </div>
+              <button onClick={submitOrder} disabled={loading}
+                className="w-full bg-green-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 active:opacity-80 hover:bg-green-700">
+                {loading ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+                {loading ? 'Processando...' : 'Enviar Pedido no WhatsApp'}
+              </button>
+            </>
           )}
         </div>
       </div>
