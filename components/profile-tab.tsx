@@ -63,6 +63,7 @@ export default function ProfileTab({ setActiveTab, setIsStoreInfoOpen }: Profile
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
           {[
             { icon: ShoppingBag, label: 'Meus Pedidos', action: () => setActiveTab ? setActiveTab('pedidos') : router.push('/pedidos') },
+            { icon: Star, label: 'Meus Pontos', action: () => router.push('/pontos') },
             { icon: Gift, label: 'Cupons Disponíveis', action: () => router.push('/cupons') },
             { icon: MapPin, label: 'Meus Endereços', action: () => router.push('/enderecos') },
             { icon: Info, label: 'Sobre a Loja', action: () => setIsStoreInfoOpen ? setIsStoreInfoOpen(true) : router.push('/sobre') },

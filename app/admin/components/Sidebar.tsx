@@ -17,6 +17,7 @@ import {
   Settings,
   Truck,
   Boxes,
+  Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
@@ -33,6 +34,7 @@ const menuItems = [
   { name: 'Pedidos', href: '/admin/orders', icon: ShoppingBag },
   { name: 'Promoções', href: '/admin/promotions', icon: Tag },
   { name: 'Cupons', href: '/admin/coupons', icon: Ticket },
+  { name: 'Pontos', href: '/admin/pontos', icon: Star },
   { name: 'Zonas Entrega', href: '/admin/delivery-zones', icon: Truck },
   { name: 'Estoque', href: '/admin/stock', icon: Boxes },
   { name: 'Usuários', href: '/admin/users', icon: Users },

@@ -242,6 +242,17 @@ export interface DeliveryZone {
   polygon_source: 'nominatim' | 'manual' | null;
 }
 
+export interface PointsSettings {
+  id: string;
+  earn_rate: number;
+  redeem_rate: number;
+  min_points_to_redeem: number;
+  max_redeem_percent: number;
+  expiration_days: number;
+  enabled: boolean;
+  updated_at: string;
+}
+
 export interface StoreSettings {
   id: string;
   store_name: string | null;
@@ -314,6 +325,7 @@ export interface Database {
       promotions: { Row: Promotion; Insert: Partial<Promotion>; Update: Partial<Promotion> };
       scheduled_promotions: { Row: ScheduledPromotion; Insert: Partial<ScheduledPromotion>; Update: Partial<ScheduledPromotion> };
       stock_entries: { Row: StockEntry; Insert: Partial<StockEntry>; Update: Partial<StockEntry> };
+      points_settings: { Row: PointsSettings; Insert: Partial<PointsSettings>; Update: Partial<PointsSettings> };
       store_settings: { Row: StoreSettings; Insert: Partial<StoreSettings>; Update: Partial<StoreSettings> };
       user_coupons: { Row: UserCoupon; Insert: Partial<UserCoupon>; Update: Partial<UserCoupon> };
       whatsapp_templates: { Row: WhatsappTemplate; Insert: Partial<WhatsappTemplate>; Update: Partial<WhatsappTemplate> };
@@ -327,6 +339,8 @@ export interface Database {
         Args: { p_user_id: string; p_address: Json; p_items: Json; p_delivery_fee: number; p_coupon_code?: string; p_points_to_redeem?: number; p_customer_name?: string; p_customer_phone?: string; p_notes?: string; };
         Returns: Json;
       };
+      confirm_order: { Args: { p_order_id: string }; Returns: { success: boolean; order_id: string; points_earned: number; user_id: string } };
+      adjust_user_points: { Args: { p_user_id: string; p_points: number; p_description: string }; Returns: { success: boolean; new_balance: number } };
       get_dashboard_stats: {
         Args: Record<string, never>;
         Returns: { orders_count: number; clients_count: number; total_revenue: number; products_count: number }[];

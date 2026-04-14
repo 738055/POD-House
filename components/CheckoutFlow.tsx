@@ -5,7 +5,7 @@ import { X, ChevronLeft, Loader2, Check, MapPin, Tag, Star, MessageCircle, Send,
 import { createClient } from '@/lib/supabase/client';
 import { useAuth }  from '@/hooks/use-auth';
 import { useCart }  from '@/hooks/use-cart';
-import type { Address, CouponValidation } from '@/lib/supabase/types';
+import type { Address, CouponValidation, PointsSettings } from '@/lib/supabase/types';
 
 interface Props {
   isOpen: boolean;
@@ -71,6 +71,9 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
   const [usePoints, setUsePoints]         = useState(false);
   const [pointsToRedeem, setPointsToRedeem] = useState(0);
 
+  // Configurações do programa de pontos
+  const [pointsSettings, setPointsSettings] = useState<PointsSettings | null>(null);
+
   // Número WhatsApp da loja (carregado do banco)
   const [storeWhatsapp, setStoreWhatsapp] = useState<string>('');
   const [whatsappUrl, setWhatsappUrl] = useState<string>('');
@@ -78,9 +81,18 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
   // Frete: detectado automaticamente via polígono/zona
   const deliveryFee    = zoneResult?.delivery_fee ?? 0;
   const couponDiscount = couponResult?.valid ? (couponResult.type === 'free_delivery' ? deliveryFee : (couponResult.discount ?? 0)) : 0;
-  const pointsDiscount = usePoints ? Math.round((pointsToRedeem / 100) * 5 * 100) / 100 : 0;
-  const maxPoints      = profile ? Math.min(profile.points_balance, Math.floor(totalPrice / 5) * 100) : 0;
-  const total          = Math.max(0, totalPrice + deliveryFee - couponDiscount - pointsDiscount);
+
+  // Configurações dinâmicas de pontos
+  const redeemRate  = pointsSettings?.redeem_rate  ?? 0.05;
+  const minRedeem   = pointsSettings?.min_points_to_redeem ?? 100;
+  const maxRedeemPct = pointsSettings?.max_redeem_percent ?? 0.20;
+  const earnRate    = pointsSettings?.earn_rate ?? 1;
+
+  const pointsDiscount = usePoints ? Math.round(pointsToRedeem * redeemRate * 100) / 100 : 0;
+  // Máx de pontos = mínimo entre o saldo do usuário e o teto percentual do pedido
+  const maxPointsByOrder   = redeemRate > 0 ? Math.floor(((totalPrice + deliveryFee) * maxRedeemPct) / redeemRate) : 0;
+  const maxPoints          = profile ? Math.min(profile.points_balance, maxPointsByOrder) : 0;
+  const total              = Math.max(0, totalPrice + deliveryFee - couponDiscount - pointsDiscount);
 
   // Sem etapa de seleção manual de bairro — detecção automática por polígono
   const ALL_STEPS: Step[] = ['info', 'address', 'extras', 'summary'];
@@ -111,6 +123,8 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
   useEffect(() => {
     supabase.from('store_settings').select('whatsapp_number').eq('id', 'default').single()
       .then(({ data }) => { if (data?.whatsapp_number) setStoreWhatsapp(data.whatsapp_number); });
+    supabase.from('points_settings').select('*').eq('id', 'default').single()
+      .then(({ data }) => { if (data) setPointsSettings(data as PointsSettings); });
   }, []);
 
   if (!isOpen) return null;
@@ -374,7 +388,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
               <span className="font-bold">Pontos de fidelidade</span>
             </div>
             <p className="text-sm text-green-700">
-              Você receberá <strong>{Math.floor(orderSuccess.total)} pontos</strong> quando o vendedor confirmar seu pedido!
+              Você receberá <strong>{Math.floor(orderSuccess.total * earnRate)} pontos</strong> quando o vendedor confirmar seu pedido!
             </p>
           </div>
           {whatsappUrl && (
@@ -643,7 +657,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <p className="text-sm font-semibold text-gray-800">Usar pontos de fidelidade</p>
-                        <p className="text-xs text-gray-500">100 pts = R$ 5,00 de desconto</p>
+                        <p className="text-xs text-gray-500">{minRedeem} pts = {fmt(minRedeem * redeemRate)} de desconto</p>
                       </div>
                       <button onClick={() => { setUsePoints(p => !p); if (!usePoints) setPointsToRedeem(maxPoints); else setPointsToRedeem(0); }}
                         className={`w-11 h-6 rounded-full transition-colors ${usePoints ? 'bg-[#0EAD69]' : 'bg-gray-300'}`}>
@@ -719,7 +733,7 @@ export default function CheckoutFlow({ isOpen, onClose }: Props) {
                 <Star size={16} className="text-[#0EAD69] mt-0.5 flex-shrink-0" />
                 <div className="text-xs text-green-700">
                   <p className="font-semibold">Programa de fidelidade</p>
-                  <p>Após o vendedor confirmar seu pedido, você ganhará <strong>{Math.floor(total)} pontos</strong>!</p>
+                  <p>Após o vendedor confirmar seu pedido, você ganhará <strong>{Math.floor(total * earnRate)} pontos</strong>!</p>
                 </div>
               </div>
 
